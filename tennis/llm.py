@@ -15,8 +15,11 @@ import requests
 
 class ClientOllama:
     def __init__(self, modele: str = "qwen3:8b", journal: Path | None = None,
-                 url: str | None = None, timeout: int = 180):
+                 url: str | None = None, timeout: int = 180, num_ctx: int = 4096):
         self.modele = modele
+        # Contexte réduit : nos prompts font < 2 000 tokens. Avec le contexte par défaut
+        # d'Ollama (16 384), qwen3:8b déborde des 8 Go de VRAM (20 % sur CPU, plus lent).
+        self.num_ctx = int(os.environ.get("OLLAMA_NUM_CTX", num_ctx))
         self.url = (url or os.environ.get("OLLAMA_URL", "http://localhost:11434")).rstrip("/")
         self.journal = journal
         self.timeout = timeout
@@ -36,7 +39,7 @@ class ClientOllama:
                     "model": self.modele, "stream": False, "format": "json", "think": False,
                     "messages": [{"role": "system", "content": systeme},
                                  {"role": "user", "content": utilisateur}],
-                    "options": {"temperature": 0.7, "num_predict": 450},
+                    "options": {"temperature": 0.7, "num_predict": 450, "num_ctx": self.num_ctx},
                 })
                 r.raise_for_status()
                 texte = r.json()["message"]["content"]

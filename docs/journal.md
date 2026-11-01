@@ -58,3 +58,20 @@ jugés corrects. Corrigé :
   en dur.
 - Gardé tel quel (choix) : les négociations concernent aussi les joueurs
   baseline. Elles touchent les gains, pas les points, donc pas la mesure.
+
+## Constats pendant la première saison LLM (prompts v1)
+
+- **Le LLM lit mal une règle ambiguë** : pour « récupérer », les joueurs
+  choisissent l'entraînement « physique » (18 fois sur 33 décisions à mi-
+  saison) alors qu'il ajoute de la fatigue ; seul « repos » fait récupérer.
+  La phrase v1 « physique réduit durablement la fatigue accumulée en match »
+  était ambiguë. → **prompts v2** : effets chiffrés, « repos est le SEUL
+  choix qui fait récupérer ». La v1 reste disponible (`--prompts 1`).
+- **Biais de tactique** : `service_agressif` choisi 22 fois sur 25. En v2 :
+  effets chiffrés de chaque tactique, ordre de présentation tiré au sort
+  (biais de position), et nombre d'adversaires au retour / service faible.
+- **Mémoire de la machine** : Ollama 0.40 charge qwen3:8b avec un contexte
+  de 16 384 tokens (7,8 Go, 20 % sur CPU) ; mémoire vive libre tombée à
+  0,5 Go. → `num_ctx` = 4096 par défaut dans le client (variable
+  `OLLAMA_NUM_CTX`), à partir de la saison suivante. Chrome non lancé
+  pendant les simulations, par prudence.
