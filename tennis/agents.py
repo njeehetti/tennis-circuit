@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import difflib
 import math
+import random
 import unicodedata
 from dataclasses import dataclass
 
@@ -84,7 +85,9 @@ def _etat_txt(e: Etat) -> str:
             f"blessé : {bless} ; points au classement : {e.points}")
 
 
-REGLES = (
+# Version 1 (première saison) : formulation ambiguë de « physique », que le LLM
+# a lu comme un moyen de récupérer. Conservée pour reproduire les résultats.
+REGLES_V1 = (
     "Règles connues de tous les joueurs : la fatigue baisse ton niveau et, au-dessus de 6/10, "
     "augmente fortement le risque de blessure. Jouer un tournoi fatigue (surtout en 5 sets), "
     "une semaine sans tournoi récupère environ 3 points de fatigue, l'entraînement « repos » "
@@ -93,6 +96,29 @@ REGLES = (
     "nettement ton niveau. Le Grand Chelem rapporte 2000 points au vainqueur, un Masters 1000, "
     "un 500 et un 250 en proportion."
 )
+# Version 2 : effets chiffrés et sans ambiguïté.
+REGLES_V2 = (
+    "Règles connues de tous les joueurs. Fatigue (0 à 10) : chaque point de fatigue te coûte "
+    "0,4 point de pourcentage au service et en retour ; au-dessus de 6/10, chaque match comporte "
+    "un risque de blessure (3 % par point au-dessus de 6). Chaque match ajoute environ 1 point "
+    "de fatigue (1,5 en 5 sets). En fin de semaine tu récupères 1 point si tu as joué, 3 si tu "
+    "n'as pas joué. Entraînement : « repos » est le SEUL choix qui fait récupérer davantage "
+    "(1,5 point de plus) ; « physique » est une séance dure qui AJOUTE 0,5 de fatigue cette "
+    "semaine, mais te rend plus endurant (tu accumuleras moins de fatigue en match ensuite) ; "
+    "« service » et « retour » améliorent ces coups de 0,2 point de pourcentage par semaine "
+    "(plafond +2). Jouer blessé coûte 3 points de pourcentage. Points au vainqueur : Grand "
+    "Chelem 2000, Masters 1000, 500, 250 ; un premier tour perdu rapporte 0 à 10 points."
+)
+REGLES = {1: REGLES_V1, 2: REGLES_V2}
+TACTIQUES_V2 = {
+    "service_agressif": "« service_agressif » : +1,2 point de % au service, −0,8 en retour ; "
+                        "+0,8 de plus contre un adversaire dont le retour est sous la moyenne ; "
+                        "+0,5 sur gazon ; fatigue un peu plus",
+    "pression_retour": "« pression_retour » : +1,2 point de % en retour, −0,8 au service ; "
+                       "+0,8 de plus contre un adversaire dont le service est sous la moyenne ; "
+                       "+0,5 sur terre battue",
+    "equilibre": "« equilibre » : aucun bonus, aucun malus, pas de fatigue supplémentaire",
+}
 
 
 @dataclass(frozen=True)
@@ -111,7 +137,8 @@ def decision_baseline(e: Etat, tournoi: Tournoi | None, semaine: int) -> Decisio
 
 
 def decision_joueur(llm, j: Joueur, e: Etat, semaine: int, tournoi: Tournoi | None,
-                    a_venir: list, conseil: str, souvenirs: str, rang: int) -> Decision:
+                    a_venir: list, conseil: str, souvenirs: str, rang: int,
+                    version: int = 2) -> Decision:
     if tournoi:
         semaine_txt = (f"Cette semaine (semaine {semaine}) : {tournoi.nom}, catégorie {tournoi.categorie}, "
                        f"sur {NOMS_SURFACES[tournoi.surface]}, {tournoi.points('V')} points au vainqueur.")
@@ -123,7 +150,7 @@ def decision_joueur(llm, j: Joueur, e: Etat, semaine: int, tournoi: Tournoi | No
         f"Tu es {j.nom}, {j.age} ans, joueur de tennis professionnel fictif, {rang}e au classement. "
         f"Personnalité : {j.personnalite}.\n"
         f"Ton profil : {_profil_txt(j, tournoi.surface if tournoi else 'Hard')}.\n"
-        f"Ton état : {_etat_txt(e)}.\n{REGLES}\n\n{semaine_txt}\nProchains tournois : {suite}.\n"
+        f"Ton état : {_etat_txt(e)}.\n{REGLES[version]}\n\n{semaine_txt}\nProchains tournois : {suite}.\n"
         f"Conseil de ton entraîneur : {conseil or 'aucun cette semaine'}\n"
         f"Tes souvenirs importants :\n{souvenirs}\n\n"
         "Décide pour cette semaine. Réponds en JSON : "
@@ -140,8 +167,25 @@ def decision_joueur(llm, j: Joueur, e: Etat, semaine: int, tournoi: Tournoi | No
     return Decision(jouer, entr, str(rep.get("raisonnement", ""))[:400], not exact)
 
 
+def _tactiques_txt(version: int, j: Joueur, tournoi: Tournoi, adversaires: list) -> str:
+    if version == 1:
+        return ("Tactiques possibles : « service_agressif » (plus de points au service, moins en retour, "
+                "fatigue un peu plus, efficace contre les mauvais retourneurs et sur gazon), "
+                "« pression_retour » (l'inverse, efficace contre les serveurs faibles et sur terre), "
+                "« equilibre » (neutre). Tu peux être en désaccord avec ton joueur.\n")
+    # v2 : effets chiffrés, ordre variable (contre le biais de position), faits sur le tableau
+    ordre = list(TACTIQUES_V2)
+    random.Random(f"{j.id}-{tournoi.semaine}").shuffle(ordre)
+    n_r = sum(1 for a in adversaires if a.profil["surfaces"][tournoi.surface]["retour"] < RETOUR_MOYEN)
+    n_s = sum(1 for a in adversaires if a.profil["surfaces"][tournoi.surface]["service"] < SERVICE_MOYEN)
+    return ("Tactiques possibles (effets sur les chances de gagner chaque point) :\n"
+            + "\n".join(f"- {TACTIQUES_V2[t]}" for t in ordre)
+            + f"\nParmi ces {len(adversaires)} adversaires, {n_r} ont un retour sous la moyenne du "
+              f"circuit et {n_s} un service sous la moyenne. Tu peux être en désaccord avec ton joueur.\n")
+
+
 def conseil_entraineur(llm, nom_coach: str, perso_coach: str, j: Joueur, e: Etat,
-                       tournoi: Tournoi, adversaires: list) -> tuple:
+                       tournoi: Tournoi, adversaires: list, version: int = 2) -> tuple:
     """Renvoie (tactique, conseil, recommande_jouer, repli)."""
     adv_txt = "\n".join(f"- {_profil_txt(a, tournoi.surface)}" for a in adversaires) or "- inconnus"
     prompt = (
@@ -150,10 +194,7 @@ def conseil_entraineur(llm, nom_coach: str, perso_coach: str, j: Joueur, e: Etat
         f"Son état (tu le connais) : {_etat_txt(e)}.\n"
         f"Tournoi : {tournoi.nom} ({tournoi.categorie}, {NOMS_SURFACES[tournoi.surface]}).\n"
         f"Principaux adversaires possibles :\n{adv_txt}\n\n"
-        "Tactiques possibles : « service_agressif » (plus de points au service, moins en retour, "
-        "fatigue un peu plus, efficace contre les mauvais retourneurs et sur gazon), "
-        "« pression_retour » (l'inverse, efficace contre les serveurs faibles et sur terre), "
-        "« equilibre » (neutre). Tu peux être en désaccord avec ton joueur.\n"
+        + _tactiques_txt(version, j, tournoi, adversaires) +
         'Réponds en JSON : {"tactique": "...", "recommande_jouer": true ou false, '
         '"conseil": "une ou deux phrases adressées au joueur"}'
     )

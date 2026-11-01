@@ -87,3 +87,25 @@ def test_contrat_au_montant_du_sponsor_si_inferieur():
                 return {"montant": 250000, "argument": "x"}
             return {"decision": "accepter", "montant": 180000, "message": "ok"}
     assert negociation(Alterne(), j, Etat(), 1, 0, ("S", "p", 300000))["contrat"] == 180000
+
+
+class Capture:
+    def __init__(self, rep):
+        self.rep, self.prompts = rep, []
+
+    def json(self, role, systeme, prompt, cles):
+        self.prompts.append(prompt)
+        return self.rep
+
+
+def test_prompts_v2_levent_l_ambiguite_du_physique():
+    from tennis.agents import conseil_entraineur
+    js = creer_joueurs([gab(0.6 + i / 1000, 0.33) for i in range(80)], random.Random(1))
+    llm = Capture({"jouer": True, "entrainement": "repos", "raisonnement": "x",
+                   "tactique": "equilibre", "conseil": "x"})
+    decision_joueur(llm, js[0], Etat(), 1, CALENDRIER[0], [], "", "", 5, version=2)
+    assert "SEUL choix qui fait récupérer" in llm.prompts[-1]
+    decision_joueur(llm, js[0], Etat(), 1, CALENDRIER[0], [], "", "", 5, version=1)
+    assert "réduit durablement" in llm.prompts[-1]
+    conseil_entraineur(llm, "C", "p", js[0], Etat(), CALENDRIER[0], js[1:5], version=2)
+    assert "4 ont un retour sous la moyenne" in llm.prompts[-1]

@@ -27,13 +27,14 @@ NOMS_TOURS = {"R16": "huitième de finale", "QF": "quart de finale", "SF": "demi
 
 class Saison:
     def __init__(self, gabarits: list, llm, graine: int = 1, semaines: int = 12,
-                 controle: bool = False, progres=None):
+                 controle: bool = False, progres=None, version_prompts: int = 2):
         self.rng = random.Random(graine)
         self.graine = graine
         self.llm = llm
         self.semaines = semaines
         # controle=True : les joueurs « llm » suivent aussi la baseline (mesure du bruit)
         self.controle = controle
+        self.version_prompts = version_prompts
         self.progres = progres or (lambda msg: None)
         self.joueurs = creer_joueurs(gabarits, self.rng)
         self.par_id = {j.id: j for j in self.joueurs}
@@ -80,13 +81,13 @@ class Saison:
                     tops = [self.par_id[i] for i in classement if i != j.id][:4]
                     nom_c, perso_c = self.coachs[j.id]
                     tac, conseil, reco, repli = agents.conseil_entraineur(
-                        self.llm, nom_c, perso_c, j, e, tournoi, tops)
+                        self.llm, nom_c, perso_c, j, e, tournoi, tops, self.version_prompts)
                     tactiques[j.id] = tac
                     conseils[j.id] = {"entraineur": nom_c, "tactique": tac, "conseil": conseil,
                                       "recommande_jouer": reco, "repli": repli}
                 souv = en_texte(recuperer(self.memoires[j.id], semaine))
                 d = agents.decision_joueur(self.llm, j, e, semaine, tournoi, a_venir, conseil,
-                                           souv, classement.index(j.id) + 1)
+                                           souv, classement.index(j.id) + 1, self.version_prompts)
             else:
                 d = agents.decision_baseline(e, tournoi, semaine)
                 tactiques[j.id] = "equilibre"
@@ -273,7 +274,8 @@ class Saison:
         replis = sum(1 for s in self.journal["semaines"] for d in s["decisions"]
                      if d["repli"] or (d["conseil"] and d["conseil"]["repli"]))
         return {"meta": {"graine": self.graine, "semaines": self.semaines, "controle": self.controle,
-                         "llm": dict(self.llm.stats), "replis": replis},
+                         "llm": dict(self.llm.stats), "replis": replis,
+                         "version_prompts": self.version_prompts},
                 "joueurs": joueurs,
                 "calendrier": [{"semaine": t.semaine, "nom": t.nom, "surface": t.surface,
                                 "categorie": t.categorie} for t in CALENDRIER if t.semaine <= self.semaines],

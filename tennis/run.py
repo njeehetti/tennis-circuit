@@ -19,6 +19,7 @@ def main(argv=None) -> Path:
     p.add_argument("--modele", default="qwen3:8b")
     p.add_argument("--faux", action="store_true", help="faux LLM déterministe (sans Ollama)")
     p.add_argument("--controle", action="store_true", help="tous les joueurs en baseline (mesure du bruit)")
+    p.add_argument("--prompts", type=int, default=2, choices=(1, 2), help="version des prompts")
     p.add_argument("--sans-tableau", action="store_true", help="ne pas générer le tableau de bord")
     a = p.parse_args(argv)
     nom = a.nom or f"saison_g{a.graine}_{time.strftime('%Y%m%d_%H%M')}"
@@ -27,7 +28,8 @@ def main(argv=None) -> Path:
     llm = FauxLLM() if a.faux else ClientOllama(a.modele, journal=dossier / "llm.jsonl")
     debut = time.time()
     saison = Saison(charger_gabarits(), llm, graine=a.graine, semaines=a.semaines,
-                    controle=a.controle, progres=lambda m: print(m, flush=True))
+                    controle=a.controle, progres=lambda m: print(m, flush=True),
+                    version_prompts=a.prompts)
     res = saison.jouer()
     res["meta"].update({"modele": "faux" if a.faux else a.modele, "nom": nom,
                         "duree_s": round(time.time() - debut, 1)})
