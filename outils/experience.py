@@ -26,11 +26,29 @@ def plage(txt: str) -> list:
     return list(range(int(debut), int(fin or debut) + 1))
 
 
+# quantiles 97,5 % de la loi de Student (ddl -> t)
+T975 = ((1, 12.706), (2, 4.303), (3, 3.182), (4, 2.776), (5, 2.571), (6, 2.447), (7, 2.365),
+        (8, 2.306), (9, 2.262), (10, 2.228), (12, 2.179), (15, 2.131), (20, 2.086), (30, 2.042),
+        (60, 2.000), (120, 1.980))
+
+
+def student_975(ddl: int) -> float:
+    """Quantile de Student (valeur tabulée au ddl inférieur le plus proche : prudent)."""
+    t = 1.96
+    for d, v in reversed(T975):
+        if ddl >= d:
+            return v
+        t = v
+    return t
+
+
 def resume(ecarts: list) -> dict:
     n = len(ecarts)
     moy = statistics.mean(ecarts)
-    et = statistics.stdev(ecarts) if n > 1 else 0.0
-    demi = 1.96 * et / math.sqrt(n) if n > 1 else float("nan")
+    if n < 2:
+        return {"n": n, "moyenne": round(moy, 1), "ecart_type": None, "ic95": None}
+    et = statistics.stdev(ecarts)
+    demi = student_975(n - 1) * et / math.sqrt(n)
     return {"n": n, "moyenne": round(moy, 1), "ecart_type": round(et, 1),
             "ic95": [round(moy - demi, 1), round(moy + demi, 1)]}
 
@@ -61,7 +79,9 @@ def main(argv=None) -> dict:
         par_paire += [x["ecart"] for x in exp["paires"]]
         print(f"graine {g} : écart moyen {exp['ecart_moyen']:+.0f}", flush=True)
     bilan = {"mode": mode, "semaines": a.semaines, "graines": a.graines,
-             "par_saison": resume(par_saison), "par_paire": resume(par_paire)}
+             "par_saison": resume(par_saison),
+             "par_paire": {**resume(par_paire),
+                           "note": "indicatif : les paires d'une même saison ne sont pas indépendantes"}}
     (dossier / "bilan.json").write_text(json.dumps(bilan, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps(bilan, ensure_ascii=False, indent=1))
     return bilan

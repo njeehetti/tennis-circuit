@@ -46,7 +46,7 @@ class ClientOllama:
                 manquantes = [c for c in cles if c not in donnees]
                 if manquantes:
                     raise ValueError(f"clés manquantes : {manquantes}")
-            except (requests.RequestException, ValueError, KeyError) as exc:
+            except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
                 donnees, erreur = None, str(exc)[:200]
             duree = time.time() - debut
             self.stats["appels"] += 1

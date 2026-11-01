@@ -6,6 +6,7 @@ réponse et applique un repli déterministe si besoin (marqué `repli`).
 from __future__ import annotations
 
 import difflib
+import math
 import unicodedata
 from dataclasses import dataclass
 
@@ -56,6 +57,17 @@ def booleen(valeur, defaut: bool) -> bool:
     if v in ("false", "non", "no", "0"):
         return False
     return defaut
+
+
+def entier_sur(valeur, defaut: int) -> int:
+    """Convertit une réponse LLM en entier ; rejette nan, inf et les types inattendus."""
+    try:
+        x = float(valeur)
+    except (TypeError, ValueError, OverflowError):
+        return defaut
+    if math.isnan(x) or math.isinf(x):
+        return defaut
+    return int(x)
 
 
 def _profil_txt(j: Joueur, surface: str) -> str:
@@ -164,10 +176,7 @@ def reflexion(llm, j: Joueur, souvenirs: str, semaine: int) -> tuple:
     rep = llm.json("reflexion", SYSTEME, prompt, ("lecon",))
     if rep is None:
         return None, 0
-    try:
-        imp = max(1, min(10, int(rep.get("importance", 5))))
-    except (TypeError, ValueError):
-        imp = 5
+    imp = max(1, min(10, entier_sur(rep.get("importance"), 5)))
     return str(rep["lecon"])[:300], imp
 
 
@@ -220,10 +229,10 @@ def negociation(llm, j: Joueur, e: Etat, rang: int, titres: int, sponsor: tuple,
         rep_a = llm.json("agent", SYSTEME, p_agent, ("montant", "argument"))
         if rep_a is None:
             break
-        try:
-            demande = max(10000, int(float(rep_a["montant"])))
-        except (TypeError, ValueError):
+        demande = entier_sur(rep_a["montant"], -1)
+        if demande <= 0:
             break
+        demande = max(10000, demande)
         echanges.append({"qui": "agent", "montant": demande, "texte": str(rep_a["argument"])[:300]})
         hist = "\n".join(f"- {x['qui']} : {x['montant']} euros ; {x['texte']}" for x in echanges)
         p_sponsor = (
@@ -235,15 +244,12 @@ def negociation(llm, j: Joueur, e: Etat, rang: int, titres: int, sponsor: tuple,
         if rep_s is None:
             break
         decision, _ = choisir(rep_s.get("decision"), ("accepter", "contre", "refuser"), "refuser")
-        try:
-            montant = int(float(rep_s.get("montant", demande)))
-        except (TypeError, ValueError):
-            montant = demande
-        montant = min(montant, budget)
+        montant = min(max(0, entier_sur(rep_s.get("montant"), demande)), budget)
         echanges.append({"qui": "sponsor", "montant": montant, "decision": decision,
                          "texte": str(rep_s.get("message", ""))[:300]})
         if decision == "accepter":
-            contrat = min(demande, budget)
+            # le sponsor peut accepter à un montant inférieur à la demande
+            contrat = min(demande, montant) if montant > 0 else min(demande, budget)
             break
         if decision == "refuser":
             break

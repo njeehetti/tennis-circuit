@@ -48,3 +48,22 @@ def test_aucun_nom_reel_dans_les_joueurs():
     for j in r["joueurs"]:
         prenom, nom = j["nom"].split(" ")
         assert prenom and nom
+
+
+def test_tournoi_a_un_seul_inscrit_annule():
+    from tennis.tournoi import CALENDRIER
+    s = Saison(charger_gabarits(), FauxLLM(), graine=3)
+    seul = s.joueurs[0].id
+    assert s._tournoi(1, CALENDRIER[0], [seul], {}) == {}
+    assert s.titres[seul] == 0 and s.etats[seul].points == s.points_depart[seul]
+    assert s.journal["annulations"][0]["inscrits"] == [seul]
+
+
+def test_meme_match_memes_tirages():
+    """Le générateur par match ne dépend pas des décisions des autres joueurs."""
+    from tennis.tournoi import CALENDRIER
+    s1 = Saison(charger_gabarits(), FauxLLM(), graine=3)
+    s2 = Saison(charger_gabarits(), FauxLLM(), graine=3)
+    a, b = s1.joueurs[0].id, s1.joueurs[5].id
+    s2.rng.random()                                       # flux global décalé
+    assert s1._match(1, CALENDRIER[0], "R16", a, b, {}) == s2._match(1, CALENDRIER[0], "R16", a, b, {})

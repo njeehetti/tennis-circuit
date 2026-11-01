@@ -36,9 +36,13 @@ qu'il en tire entre dans sa mémoire et oriente ses décisions suivantes.
 - Mesure : écart de points gagnés entre le jumeau LLM et le jumeau baseline.
 - **Mode contrôle** (`--controle`) : les deux jumeaux suivent la baseline.
   On mesure ainsi le bruit du hasard seul. Sur 200 saisons de contrôle,
-  l'écart moyen par saison est de +24 points (IC à 95 % de -22 à +70),
-  avec un **écart-type de 332 points par saison**. Conclure sur le LLM
-  demande donc plusieurs saisons (graines).
+  l'écart moyen par saison est de −20 points (IC à 95 % de −66 à +26 :
+  aucun biais), avec un **écart-type de 328 points par saison**. Conclure
+  sur le LLM demande donc plusieurs saisons (graines) : avec 10 saisons,
+  l'IC à 95 % fait environ ±235 points.
+- Chaque match a son propre générateur aléatoire, dérivé de (graine,
+  semaine, tour, joueurs) : les décisions des autres joueurs ne décalent
+  pas les tirages.
 
 ## Modèle du monde
 

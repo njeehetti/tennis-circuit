@@ -92,7 +92,7 @@ class Saison:
                 tactiques[j.id] = "equilibre"
             decisions[j.id] = d
             c = conseils.get(j.id)
-            if tournoi and c and c["recommande_jouer"] != d.jouer:
+            if tournoi and c and not c["repli"] and c["recommande_jouer"] != d.jouer:
                 avis = "jouer" if c["recommande_jouer"] else "me reposer"
                 self._souvenir(j.id, semaine, f"Je n'ai pas suivi {c['entraineur']}, qui voulait que je "
                                f"{avis} pour {tournoi.nom}.", 5)
@@ -128,6 +128,11 @@ class Saison:
 
     # --------------------------------------------------------------- tournoi
     def _tournoi(self, semaine: int, t, entrants: list, tactiques: dict) -> dict:
+        if len(entrants) < 2:
+            self.progres(f"  {t.nom} annulé : {len(entrants)} inscrit(s)")
+            self.journal.setdefault("annulations", []).append({"semaine": semaine, "tournoi": t.nom,
+                                                                "inscrits": list(entrants)})
+            return {}
         places = tableau(entrants)
         atteint = {i: "R16" for i in entrants}
         surprises = []
@@ -160,18 +165,23 @@ class Saison:
 
     def _match(self, semaine: int, t, tour: str, a: str, b: str, tactiques: dict) -> tuple:
         ja, jb = self.par_id[a], self.par_id[b]
-        if self.rng.random() < 0.5:                      # qui sert en premier
+        # Un générateur par match, dérivé de (graine, semaine, tour, joueurs) : deux
+        # jumeaux face au même adversaire au même tour ont les mêmes tirages, et les
+        # décisions des autres joueurs ne décalent pas le flux aléatoire.
+        cle_rng = "-".join((str(self.graine), str(semaine), tour, *sorted((a, b))))
+        rng = random.Random(cle_rng)
+        if rng.random() < 0.5:                           # qui sert en premier
             ja, jb, a, b = jb, ja, b, a
         fa = force_effective(ja, self.etats[a], t.surface, tactiques.get(a, "equilibre"), jb)
         fb = force_effective(jb, self.etats[b], t.surface, tactiques.get(b, "equilibre"), ja)
-        res = jouer_match(fa, fb, self.rng, RETOUR_MOYEN, t.sets_gagnants())
+        res = jouer_match(fa, fb, rng, RETOUR_MOYEN, t.sets_gagnants())
         gagnant, perdant = (a, b) if res.vainqueur == 0 else (b, a)
         cinq = t.sets_gagnants() == 3
         sets_g = [(x, y) if gagnant == a else (y, x) for x, y in res.sets]
         score = " ".join(f"{x}-{y}" for x, y in sets_g)
         for jid in (a, b):
             e, blesse = apres_match(self.etats[jid], jid == gagnant, cinq, tactiques.get(jid, "equilibre"),
-                                    self.rng)
+                                    rng)
             self.etats[jid] = e
             if blesse:
                 self._souvenir(jid, semaine, f"Je me suis blessé pendant mon {NOMS_TOURS[tour]} à {t.nom} "
@@ -260,8 +270,10 @@ class Saison:
                 "memoire": [{"semaine": s.semaine, "texte": s.texte, "importance": s.importance,
                              "type": s.type} for s in self.memoires[j.id]],
             })
+        replis = sum(1 for s in self.journal["semaines"] for d in s["decisions"]
+                     if d["repli"] or (d["conseil"] and d["conseil"]["repli"]))
         return {"meta": {"graine": self.graine, "semaines": self.semaines, "controle": self.controle,
-                         "llm": dict(self.llm.stats)},
+                         "llm": dict(self.llm.stats), "replis": replis},
                 "joueurs": joueurs,
                 "calendrier": [{"semaine": t.semaine, "nom": t.nom, "surface": t.surface,
                                 "categorie": t.categorie} for t in CALENDRIER if t.semaine <= self.semaines],

@@ -124,7 +124,8 @@ def apres_match(e: Etat, gagne: bool, cinq_sets: bool, tactique: str,
     nouvelle = False
     blessure = e.blessure
     if blessure == 0 and rng.random() < max(0.0, fatigue - 6) * 0.03:
-        blessure, nouvelle = rng.randint(1, 3), True
+        # 2 à 4 : la semaine en cours est décomptée en fin de semaine (1 à 3 semaines réelles)
+        blessure, nouvelle = rng.randint(2, 4), True
     return replace(e, fatigue=fatigue, blessure=blessure, matchs=e.matchs + 1,
                    victoires=e.victoires + int(gagne)), nouvelle
 

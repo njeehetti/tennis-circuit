@@ -57,3 +57,15 @@ def test_memoire_recupere_important_et_recent():
     m = ajouter(m, Souvenir(9, "entraînement banal", 2))
     textes = [s.texte for s in recuperer(m, 10, k=2)]
     assert "titre au Majeur" in textes and "vieux détail" not in textes
+
+
+class _RngZero(random.Random):
+    def random(self):
+        return 0.0
+
+
+def test_blessure_dure_au_moins_une_semaine_visible():
+    e, nouvelle = apres_match(Etat(fatigue=10), False, False, "equilibre", _RngZero(1))
+    assert nouvelle
+    apres = fin_de_semaine(e, True, "service", "R16")
+    assert apres.blessure >= 1

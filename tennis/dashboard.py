@@ -87,7 +87,7 @@ const pilote = j => j.pilote === "llm" ? '<span class="llm">LLM</span>' : '<span
 const m = D.meta, exp = D.experience;
 
 document.getElementById("sous").textContent =
-  `Graine ${m.graine} · ${m.semaines} semaines · modèle ${m.modele || "?"} · ${m.llm.appels} appels LLM (${m.llm.echecs} replis) · ${Math.round((m.duree_s||0)/60)} min de calcul` + (m.controle ? " · MODE CONTRÔLE (tout le monde en baseline)" : "");
+  `Graine ${m.graine} · ${m.semaines} semaines · modèle ${m.modele || "?"} · ${m.llm.appels} appels LLM, ${m.llm.echecs} échecs, ${m.replis ?? 0} décisions en repli · ${Math.round((m.duree_s||0)/60)} min de calcul` + (m.controle ? " · MODE CONTRÔLE (tout le monde en baseline)" : "");
 
 const tri = [...D.joueurs].sort((a,b) => b.points - a.points);
 const champion = tri[0];
@@ -101,7 +101,7 @@ document.getElementById("chiffres").innerHTML = chiffres.map(([v,l]) => `<div cl
 
 document.getElementById("experience").innerHTML = `<table><tr><th>Paire</th><th>Jumeau LLM</th><th class="n">points</th><th>Jumeau baseline</th><th class="n">points</th><th class="n">écart</th></tr>` +
   exp.paires.map(p => `<tr><td><span style="color:${COUL[p.paire]}">■</span> ${p.paire+1}</td><td>${esc(nom(p.llm))}</td><td class="n">${p.points_llm}</td><td>${esc(nom(p.baseline))}</td><td class="n">${p.points_baseline}</td><td class="n ${p.ecart>=0?"pos":"neg"}">${p.ecart>=0?"+":""}${p.ecart}</td></tr>`).join("") +
-  `</table><p class="meta">Écart moyen ${Math.round(exp.ecart_moyen)} points, écart-type ${Math.round(exp.ecart_type)}. Une seule saison est très bruitée : en mode contrôle (deux jumeaux baseline), l'écart moyen par saison a un écart-type d'environ 330 points. Il faut plusieurs graines pour conclure (outils/experience.py).</p>`;
+  `</table><p class="meta">Écart moyen ${Math.round(exp.ecart_moyen)} points, écart-type ${Math.round(exp.ecart_type)}. Une seule saison est très bruitée : comparez avec le mode contrôle (deux jumeaux baseline) et répétez sur plusieurs graines (outils/experience.py) avant de conclure.</p>`;
 
 // ---- courbe du classement
 (function(){
@@ -174,7 +174,12 @@ document.getElementById("negos").innerHTML = D.negociations.length ? D.negociati
   const LIB = ["0","15","30","40"];
   function calculer(trace, setsGagnants) {
     const res = []; let sets = [], jeux = [0,0], pts = [0,0], serveur = 0;
-    const etat = () => ({sets: sets.map(s => s.slice()), jeux: jeux.slice(), pts: pts.slice(), serveur, tb: jeux[0] === 6 && jeux[1] === 6});
+    const etat = () => {
+      const tb = jeux[0] === 6 && jeux[1] === 6, n = pts[0] + pts[1];
+      // tie-break : le premier serveur sert 1 point, puis alternance tous les 2 points
+      const srv = tb ? ((((n + 1) >> 1) % 2 === 0) ? serveur : 1 - serveur) : serveur;
+      return {sets: sets.map(s => s.slice()), jeux: jeux.slice(), pts: pts.slice(), serveur: srv, tb};
+    };
     res.push(etat());
     for (const c of trace) {
       if (c === "a" || c === "b") { pts[c === "a" ? 0 : 1]++; res.push({...etat(), gagnant: c}); }
@@ -218,7 +223,8 @@ document.getElementById("negos").innerHTML = D.negociations.length ? D.negociati
 def generer(dossier: Path) -> Path:
     dossier = Path(dossier)
     donnees = json.loads((dossier / "saison.json").read_text(encoding="utf-8"))
-    brut = json.dumps(donnees, ensure_ascii=False).replace("</", "<\\/")
+    # « </ » et « <!-- » venant du LLM ne doivent pas casser la balise <script>
+    brut = json.dumps(donnees, ensure_ascii=False).replace("</", "<\\/").replace("<!--", "<\\u0021--")
     sortie = dossier / "tableau_de_bord.html"
     sortie.write_text(GABARIT.replace("__DONNEES__", brut), encoding="utf-8")
     return sortie

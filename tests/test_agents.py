@@ -63,3 +63,27 @@ def test_negociation_plafonnee_au_budget():
 def test_faux_llm_repond_aux_cles():
     rep = FauxLLM().json("joueur", "", "fatigue : 2/10", ("jouer",))
     assert set(rep) >= {"jouer", "entrainement", "raisonnement"}
+
+
+def test_entier_sur_rejette_les_valeurs_aberrantes():
+    from tennis.agents import entier_sur
+    assert entier_sur(1e999, 7) == 7 and entier_sur(float("nan"), 7) == 7
+    assert entier_sur("12.9", 0) == 12 and entier_sur([1], 3) == 3 and entier_sur(None, 4) == 4
+
+
+def test_negociation_survit_a_un_montant_infini():
+    j = creer_joueurs([gab()] * 20, random.Random(1))[0]
+    r = negociation(LLMFixe({"montant": float("inf"), "argument": "x", "decision": "accepter"}),
+                    j, Etat(), 1, 0, ("S", "p", 300000))
+    assert r["contrat"] is None
+
+
+def test_contrat_au_montant_du_sponsor_si_inferieur():
+    j = creer_joueurs([gab()] * 20, random.Random(1))[0]
+
+    class Alterne:
+        def json(self, role, *a, **k):
+            if role == "agent":
+                return {"montant": 250000, "argument": "x"}
+            return {"decision": "accepter", "montant": 180000, "message": "ok"}
+    assert negociation(Alterne(), j, Etat(), 1, 0, ("S", "p", 300000))["contrat"] == 180000
