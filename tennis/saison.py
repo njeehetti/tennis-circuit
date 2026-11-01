@@ -8,6 +8,7 @@ sponsoring à mi-saison et en fin de saison.
 """
 from __future__ import annotations
 
+import copy
 import random
 import statistics
 from dataclasses import replace
@@ -61,10 +62,15 @@ class Saison:
         return self.par_id[jid].nom
 
     # ---------------------------------------------------------------- saison
-    def jouer(self) -> dict:
+    def jouer(self, apres_semaine=None) -> dict:
+        """Joue la saison. `apres_semaine(resultats_partiels)` permet une sauvegarde
+        à chaque semaine : un arrêt brutal (mémoire, coupure) ne perd plus tout."""
         self.journal["classements"].append({"semaine": 0, "points": dict(self.points_depart)})
         for semaine in range(1, self.semaines + 1):
             self._semaine(semaine)
+            if apres_semaine:
+                apres_semaine({**copy.deepcopy(self.resultats()), "partiel": semaine < self.semaines,
+                               "semaine_atteinte": semaine})
         return self.resultats()
 
     def _semaine(self, semaine: int) -> None:

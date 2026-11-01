@@ -67,3 +67,11 @@ def test_meme_match_memes_tirages():
     a, b = s1.joueurs[0].id, s1.joueurs[5].id
     s2.rng.random()                                       # flux global décalé
     assert s1._match(1, CALENDRIER[0], "R16", a, b, {}) == s2._match(1, CALENDRIER[0], "R16", a, b, {})
+
+
+def test_sauvegarde_a_chaque_semaine():
+    vues = []
+    Saison(charger_gabarits(), FauxLLM(), graine=3, semaines=4).jouer(apres_semaine=vues.append)
+    assert [v["semaine_atteinte"] for v in vues] == [1, 2, 3, 4]
+    assert vues[0]["partiel"] and not vues[-1]["partiel"]
+    assert len(vues[1]["semaines"]) == 2

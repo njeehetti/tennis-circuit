@@ -30,10 +30,16 @@ def main(argv=None) -> Path:
     saison = Saison(charger_gabarits(), llm, graine=a.graine, semaines=a.semaines,
                     controle=a.controle, progres=lambda m: print(m, flush=True),
                     version_prompts=a.prompts)
-    res = saison.jouer()
+    sortie = dossier / "saison.json"
+
+    def sauvegarder(partiel: dict) -> None:
+        partiel["meta"].update({"modele": "faux" if a.faux else a.modele, "nom": nom,
+                                "duree_s": round(time.time() - debut, 1)})
+        sortie.write_text(json.dumps(partiel, ensure_ascii=False, indent=1), encoding="utf-8")
+
+    res = saison.jouer(apres_semaine=sauvegarder)
     res["meta"].update({"modele": "faux" if a.faux else a.modele, "nom": nom,
                         "duree_s": round(time.time() - debut, 1)})
-    sortie = dossier / "saison.json"
     sortie.write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
     exp = res["experience"]
     print(f"Saison écrite dans {sortie}")
