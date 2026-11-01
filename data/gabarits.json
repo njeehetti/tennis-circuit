@@ -1,0 +1,2529 @@
+[
+ {
+  "service": 0.6808,
+  "retour": 0.4066,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6848,
+    "retour": 0.4043
+   },
+   "Clay": {
+    "service": 0.6564,
+    "retour": 0.4253
+   },
+   "Grass": {
+    "service": 0.7048,
+    "retour": 0.3855
+   }
+  },
+  "matchs": 297
+ },
+ {
+  "service": 0.6927,
+  "retour": 0.3927,
+  "surfaces": {
+   "Hard": {
+    "service": 0.693,
+    "retour": 0.3976
+   },
+   "Clay": {
+    "service": 0.658,
+    "retour": 0.3993
+   },
+   "Grass": {
+    "service": 0.7267,
+    "retour": 0.3707
+   }
+  },
+  "matchs": 722
+ },
+ {
+  "service": 0.6654,
+  "retour": 0.4119,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6753,
+    "retour": 0.4068
+   },
+   "Clay": {
+    "service": 0.6452,
+    "retour": 0.4315
+   },
+   "Grass": {
+    "service": 0.6746,
+    "retour": 0.3865
+   }
+  },
+  "matchs": 221
+ },
+ {
+  "service": 0.6689,
+  "retour": 0.4047,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6753,
+    "retour": 0.4083
+   },
+   "Clay": {
+    "service": 0.6419,
+    "retour": 0.4108
+   },
+   "Grass": {
+    "service": 0.6871,
+    "retour": 0.3784
+   }
+  },
+  "matchs": 550
+ },
+ {
+  "service": 0.6595,
+  "retour": 0.4011,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6588,
+    "retour": 0.38
+   },
+   "Clay": {
+    "service": 0.651,
+    "retour": 0.4464
+   },
+   "Grass": {
+    "service": 0.6855,
+    "retour": 0.3568
+   }
+  },
+  "matchs": 424
+ },
+ {
+  "service": 0.694,
+  "retour": 0.3618,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6837,
+    "retour": 0.3609
+   },
+   "Clay": {
+    "service": 0.6539,
+    "retour": 0.3673
+   },
+   "Grass": {
+    "service": 0.7415,
+    "retour": 0.3623
+   }
+  },
+  "matchs": 237
+ },
+ {
+  "service": 0.6609,
+  "retour": 0.3941,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6662,
+    "retour": 0.3965
+   },
+   "Clay": {
+    "service": 0.6221,
+    "retour": 0.404
+   },
+   "Grass": {
+    "service": 0.6652,
+    "retour": 0.3672
+   }
+  },
+  "matchs": 284
+ },
+ {
+  "service": 0.6639,
+  "retour": 0.3715,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6728,
+    "retour": 0.3669
+   },
+   "Clay": {
+    "service": 0.6343,
+    "retour": 0.394
+   },
+   "Grass": {
+    "service": 0.6587,
+    "retour": 0.3474
+   }
+  },
+  "matchs": 176
+ },
+ {
+  "service": 0.6383,
+  "retour": 0.3944,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6486,
+    "retour": 0.393
+   },
+   "Clay": {
+    "service": 0.6156,
+    "retour": 0.4369
+   },
+   "Grass": {
+    "service": 0.6267,
+    "retour": 0.3369
+   }
+  },
+  "matchs": 128
+ },
+ {
+  "service": 0.6857,
+  "retour": 0.3446,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6816,
+    "retour": 0.3453
+   },
+   "Clay": {
+    "service": 0.6733,
+    "retour": 0.3502
+   },
+   "Grass": {
+    "service": 0.7125,
+    "retour": 0.3369
+   }
+  },
+  "matchs": 128
+ },
+ {
+  "service": 0.6416,
+  "retour": 0.3881,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6455,
+    "retour": 0.3886
+   },
+   "Clay": {
+    "service": 0.6072,
+    "retour": 0.4096
+   },
+   "Grass": {
+    "service": 0.6621,
+    "retour": 0.3581
+   }
+  },
+  "matchs": 215
+ },
+ {
+  "service": 0.6626,
+  "retour": 0.3667,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6688,
+    "retour": 0.3479
+   },
+   "Clay": {
+    "service": 0.6536,
+    "retour": 0.3902
+   },
+   "Grass": {
+    "service": 0.6747,
+    "retour": 0.3782
+   }
+  },
+  "matchs": 170
+ },
+ {
+  "service": 0.657,
+  "retour": 0.3716,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6619,
+    "retour": 0.3728
+   },
+   "Clay": {
+    "service": 0.597,
+    "retour": 0.3866
+   },
+   "Grass": {
+    "service": 0.6772,
+    "retour": 0.3608
+   }
+  },
+  "matchs": 154
+ },
+ {
+  "service": 0.6829,
+  "retour": 0.3442,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6853,
+    "retour": 0.3442
+   },
+   "Clay": {
+    "service": 0.6659,
+    "retour": 0.3574
+   },
+   "Grass": {
+    "service": 0.6999,
+    "retour": 0.3202
+   }
+  },
+  "matchs": 320
+ },
+ {
+  "service": 0.6426,
+  "retour": 0.3828,
+  "surfaces": {
+   "Hard": {
+    "service": 0.641,
+    "retour": 0.3857
+   },
+   "Clay": {
+    "service": 0.6195,
+    "retour": 0.3867
+   },
+   "Grass": {
+    "service": 0.6668,
+    "retour": 0.3702
+   }
+  },
+  "matchs": 190
+ },
+ {
+  "service": 0.663,
+  "retour": 0.3599,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6722,
+    "retour": 0.355
+   },
+   "Clay": {
+    "service": 0.6413,
+    "retour": 0.3811
+   },
+   "Grass": {
+    "service": 0.675,
+    "retour": 0.3198
+   }
+  },
+  "matchs": 195
+ },
+ {
+  "service": 0.6636,
+  "retour": 0.3591,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6657,
+    "retour": 0.3546
+   },
+   "Clay": {
+    "service": 0.6467,
+    "retour": 0.3785
+   },
+   "Grass": {
+    "service": 0.685,
+    "retour": 0.3474
+   }
+  },
+  "matchs": 152
+ },
+ {
+  "service": 0.6864,
+  "retour": 0.3361,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6866,
+    "retour": 0.3253
+   },
+   "Clay": {
+    "service": 0.674,
+    "retour": 0.3547
+   },
+   "Grass": {
+    "service": 0.6955,
+    "retour": 0.3468
+   }
+  },
+  "matchs": 94
+ },
+ {
+  "service": 0.6531,
+  "retour": 0.3686,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6683,
+    "retour": 0.3302
+   },
+   "Clay": {
+    "service": 0.6415,
+    "retour": 0.4104
+   },
+   "Grass": {
+    "service": 0.6355,
+    "retour": 0.336
+   }
+  },
+  "matchs": 56
+ },
+ {
+  "service": 0.6554,
+  "retour": 0.3658,
+  "surfaces": {
+   "Hard": {
+    "service": 0.665,
+    "retour": 0.3505
+   },
+   "Clay": {
+    "service": 0.6419,
+    "retour": 0.3786
+   },
+   "Grass": {
+    "service": 0.6627,
+    "retour": 0.3794
+   }
+  },
+  "matchs": 53
+ },
+ {
+  "service": 0.6347,
+  "retour": 0.3836,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6348,
+    "retour": 0.3829
+   },
+   "Clay": {
+    "service": 0.6028,
+    "retour": 0.4007
+   },
+   "Grass": {
+    "service": 0.6481,
+    "retour": 0.3781
+   }
+  },
+  "matchs": 131
+ },
+ {
+  "service": 0.6492,
+  "retour": 0.369,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6508,
+    "retour": 0.3663
+   },
+   "Clay": {
+    "service": 0.6488,
+    "retour": 0.3952
+   },
+   "Grass": {
+    "service": 0.6444,
+    "retour": 0.3346
+   }
+  },
+  "matchs": 47
+ },
+ {
+  "service": 0.6357,
+  "retour": 0.3821,
+  "surfaces": {
+   "Hard": {
+    "service": 0.632,
+    "retour": 0.3868
+   },
+   "Clay": {
+    "service": 0.6074,
+    "retour": 0.3916
+   },
+   "Grass": {
+    "service": 0.6728,
+    "retour": 0.3548
+   }
+  },
+  "matchs": 256
+ },
+ {
+  "service": 0.6461,
+  "retour": 0.3714,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6405,
+    "retour": 0.3767
+   },
+   "Clay": {
+    "service": 0.6364,
+    "retour": 0.3671
+   },
+   "Grass": {
+    "service": 0.6813,
+    "retour": 0.3665
+   }
+  },
+  "matchs": 29
+ },
+ {
+  "service": 0.628,
+  "retour": 0.3869,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6369,
+    "retour": 0.3856
+   },
+   "Clay": {
+    "service": 0.5821,
+    "retour": 0.391
+   },
+   "Grass": {
+    "service": 0.6279,
+    "retour": 0.3902
+   }
+  },
+  "matchs": 139
+ },
+ {
+  "service": 0.697,
+  "retour": 0.3172,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6977,
+    "retour": 0.3244
+   },
+   "Clay": {
+    "service": 0.6643,
+    "retour": 0.3011
+   },
+   "Grass": {
+    "service": 0.7166,
+    "retour": 0.3064
+   }
+  },
+  "matchs": 118
+ },
+ {
+  "service": 0.6671,
+  "retour": 0.3468,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6742,
+    "retour": 0.349
+   },
+   "Clay": {
+    "service": 0.6361,
+    "retour": 0.3426
+   },
+   "Grass": {
+    "service": 0.6605,
+    "retour": 0.3373
+   }
+  },
+  "matchs": 58
+ },
+ {
+  "service": 0.6496,
+  "retour": 0.3639,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6692,
+    "retour": 0.3516
+   },
+   "Clay": {
+    "service": 0.6121,
+    "retour": 0.3963
+   },
+   "Grass": {
+    "service": 0.6495,
+    "retour": 0.3476
+   }
+  },
+  "matchs": 82
+ },
+ {
+  "service": 0.6204,
+  "retour": 0.3917,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6269,
+    "retour": 0.3852
+   },
+   "Clay": {
+    "service": 0.598,
+    "retour": 0.4135
+   },
+   "Grass": {
+    "service": 0.6204,
+    "retour": 0.3917
+   }
+  },
+  "matchs": 68
+ },
+ {
+  "service": 0.653,
+  "retour": 0.3587,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6574,
+    "retour": 0.3405
+   },
+   "Clay": {
+    "service": 0.643,
+    "retour": 0.3928
+   },
+   "Grass": {
+    "service": 0.6633,
+    "retour": 0.3315
+   }
+  },
+  "matchs": 70
+ },
+ {
+  "service": 0.6993,
+  "retour": 0.3124,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6988,
+    "retour": 0.319
+   },
+   "Clay": {
+    "service": 0.6654,
+    "retour": 0.3054
+   },
+   "Grass": {
+    "service": 0.7163,
+    "retour": 0.2919
+   }
+  },
+  "matchs": 82
+ },
+ {
+  "service": 0.6727,
+  "retour": 0.3382,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6789,
+    "retour": 0.3248
+   },
+   "Clay": {
+    "service": 0.6534,
+    "retour": 0.3772
+   },
+   "Grass": {
+    "service": 0.6924,
+    "retour": 0.3039
+   }
+  },
+  "matchs": 200
+ },
+ {
+  "service": 0.6455,
+  "retour": 0.3642,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6469,
+    "retour": 0.3553
+   },
+   "Clay": {
+    "service": 0.6411,
+    "retour": 0.3814
+   },
+   "Grass": {
+    "service": 0.6639,
+    "retour": 0.3219
+   }
+  },
+  "matchs": 183
+ },
+ {
+  "service": 0.6519,
+  "retour": 0.3571,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6525,
+    "retour": 0.3542
+   },
+   "Clay": {
+    "service": 0.6328,
+    "retour": 0.363
+   },
+   "Grass": {
+    "service": 0.6775,
+    "retour": 0.3648
+   }
+  },
+  "matchs": 174
+ },
+ {
+  "service": 0.6304,
+  "retour": 0.3774,
+  "surfaces": {
+   "Hard": {
+    "service": 0.636,
+    "retour": 0.3605
+   },
+   "Clay": {
+    "service": 0.6207,
+    "retour": 0.4015
+   },
+   "Grass": {
+    "service": 0.6407,
+    "retour": 0.3622
+   }
+  },
+  "matchs": 124
+ },
+ {
+  "service": 0.6819,
+  "retour": 0.3258,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6845,
+    "retour": 0.331
+   },
+   "Clay": {
+    "service": 0.6456,
+    "retour": 0.3209
+   },
+   "Grass": {
+    "service": 0.6893,
+    "retour": 0.3109
+   }
+  },
+  "matchs": 114
+ },
+ {
+  "service": 0.6336,
+  "retour": 0.374,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6406,
+    "retour": 0.3508
+   },
+   "Clay": {
+    "service": 0.6182,
+    "retour": 0.4015
+   },
+   "Grass": {
+    "service": 0.6543,
+    "retour": 0.3665
+   }
+  },
+  "matchs": 34
+ },
+ {
+  "service": 0.6315,
+  "retour": 0.374,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6358,
+    "retour": 0.3809
+   },
+   "Clay": {
+    "service": 0.6145,
+    "retour": 0.3762
+   },
+   "Grass": {
+    "service": 0.6398,
+    "retour": 0.3466
+   }
+  },
+  "matchs": 77
+ },
+ {
+  "service": 0.6581,
+  "retour": 0.345,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6619,
+    "retour": 0.3444
+   },
+   "Clay": {
+    "service": 0.6244,
+    "retour": 0.3671
+   },
+   "Grass": {
+    "service": 0.694,
+    "retour": 0.3144
+   }
+  },
+  "matchs": 102
+ },
+ {
+  "service": 0.6541,
+  "retour": 0.3489,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6534,
+    "retour": 0.3583
+   },
+   "Clay": {
+    "service": 0.6311,
+    "retour": 0.3397
+   },
+   "Grass": {
+    "service": 0.6661,
+    "retour": 0.3367
+   }
+  },
+  "matchs": 53
+ },
+ {
+  "service": 0.6591,
+  "retour": 0.3428,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6612,
+    "retour": 0.3408
+   },
+   "Clay": {
+    "service": 0.6515,
+    "retour": 0.35
+   },
+   "Grass": {
+    "service": 0.6591,
+    "retour": 0.3428
+   }
+  },
+  "matchs": 30
+ },
+ {
+  "service": 0.6308,
+  "retour": 0.3699,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6394,
+    "retour": 0.3628
+   },
+   "Clay": {
+    "service": 0.6016,
+    "retour": 0.3963
+   },
+   "Grass": {
+    "service": 0.6485,
+    "retour": 0.3482
+   }
+  },
+  "matchs": 134
+ },
+ {
+  "service": 0.6448,
+  "retour": 0.3554,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6523,
+    "retour": 0.3573
+   },
+   "Clay": {
+    "service": 0.6125,
+    "retour": 0.3645
+   },
+   "Grass": {
+    "service": 0.6471,
+    "retour": 0.324
+   }
+  },
+  "matchs": 79
+ },
+ {
+  "service": 0.6577,
+  "retour": 0.341,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6604,
+    "retour": 0.3414
+   },
+   "Clay": {
+    "service": 0.6367,
+    "retour": 0.3576
+   },
+   "Grass": {
+    "service": 0.6721,
+    "retour": 0.3259
+   }
+  },
+  "matchs": 44
+ },
+ {
+  "service": 0.6822,
+  "retour": 0.3158,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6805,
+    "retour": 0.311
+   },
+   "Clay": {
+    "service": 0.6397,
+    "retour": 0.3698
+   },
+   "Grass": {
+    "service": 0.7008,
+    "retour": 0.3015
+   }
+  },
+  "matchs": 56
+ },
+ {
+  "service": 0.6331,
+  "retour": 0.3648,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6269,
+    "retour": 0.3618
+   },
+   "Clay": {
+    "service": 0.619,
+    "retour": 0.3829
+   },
+   "Grass": {
+    "service": 0.6522,
+    "retour": 0.3606
+   }
+  },
+  "matchs": 66
+ },
+ {
+  "service": 0.6469,
+  "retour": 0.3496,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6439,
+    "retour": 0.3527
+   },
+   "Clay": {
+    "service": 0.6483,
+    "retour": 0.3536
+   },
+   "Grass": {
+    "service": 0.6597,
+    "retour": 0.3265
+   }
+  },
+  "matchs": 137
+ },
+ {
+  "service": 0.62,
+  "retour": 0.3764,
+  "surfaces": {
+   "Hard": {
+    "service": 0.617,
+    "retour": 0.3744
+   },
+   "Clay": {
+    "service": 0.6133,
+    "retour": 0.3822
+   },
+   "Grass": {
+    "service": 0.6385,
+    "retour": 0.3744
+   }
+  },
+  "matchs": 32
+ },
+ {
+  "service": 0.5865,
+  "retour": 0.4093,
+  "surfaces": {
+   "Hard": {
+    "service": 0.5684,
+    "retour": 0.3697
+   },
+   "Clay": {
+    "service": 0.5916,
+    "retour": 0.4593
+   },
+   "Grass": {
+    "service": 0.6156,
+    "retour": 0.3944
+   }
+  },
+  "matchs": 34
+ },
+ {
+  "service": 0.6453,
+  "retour": 0.3502,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6526,
+    "retour": 0.3536
+   },
+   "Clay": {
+    "service": 0.6214,
+    "retour": 0.3519
+   },
+   "Grass": {
+    "service": 0.6502,
+    "retour": 0.3374
+   }
+  },
+  "matchs": 79
+ },
+ {
+  "service": 0.6472,
+  "retour": 0.3481,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6569,
+    "retour": 0.3514
+   },
+   "Clay": {
+    "service": 0.5958,
+    "retour": 0.331
+   },
+   "Grass": {
+    "service": 0.651,
+    "retour": 0.3474
+   }
+  },
+  "matchs": 89
+ },
+ {
+  "service": 0.619,
+  "retour": 0.3763,
+  "surfaces": {
+   "Hard": {
+    "service": 0.608,
+    "retour": 0.3645
+   },
+   "Clay": {
+    "service": 0.6354,
+    "retour": 0.397
+   },
+   "Grass": {
+    "service": 0.6331,
+    "retour": 0.3846
+   }
+  },
+  "matchs": 72
+ },
+ {
+  "service": 0.6698,
+  "retour": 0.3252,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6608,
+    "retour": 0.3216
+   },
+   "Clay": {
+    "service": 0.6454,
+    "retour": 0.322
+   },
+   "Grass": {
+    "service": 0.7038,
+    "retour": 0.3341
+   }
+  },
+  "matchs": 32
+ },
+ {
+  "service": 0.6089,
+  "retour": 0.3854,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6137,
+    "retour": 0.3389
+   },
+   "Clay": {
+    "service": 0.6058,
+    "retour": 0.4135
+   },
+   "Grass": {
+    "service": 0.6089,
+    "retour": 0.3854
+   }
+  },
+  "matchs": 30
+ },
+ {
+  "service": 0.6464,
+  "retour": 0.347,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6402,
+    "retour": 0.3483
+   },
+   "Clay": {
+    "service": 0.6464,
+    "retour": 0.347
+   },
+   "Grass": {
+    "service": 0.6615,
+    "retour": 0.3438
+   }
+  },
+  "matchs": 25
+ },
+ {
+  "service": 0.6205,
+  "retour": 0.3724,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6233,
+    "retour": 0.3612
+   },
+   "Clay": {
+    "service": 0.604,
+    "retour": 0.4035
+   },
+   "Grass": {
+    "service": 0.6477,
+    "retour": 0.3691
+   }
+  },
+  "matchs": 111
+ },
+ {
+  "service": 0.615,
+  "retour": 0.3775,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6239,
+    "retour": 0.3772
+   },
+   "Clay": {
+    "service": 0.5976,
+    "retour": 0.374
+   },
+   "Grass": {
+    "service": 0.5928,
+    "retour": 0.386
+   }
+  },
+  "matchs": 47
+ },
+ {
+  "service": 0.6224,
+  "retour": 0.3693,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6233,
+    "retour": 0.3643
+   },
+   "Clay": {
+    "service": 0.6053,
+    "retour": 0.4015
+   },
+   "Grass": {
+    "service": 0.639,
+    "retour": 0.345
+   }
+  },
+  "matchs": 39
+ },
+ {
+  "service": 0.6336,
+  "retour": 0.358,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6414,
+    "retour": 0.3761
+   },
+   "Clay": {
+    "service": 0.6097,
+    "retour": 0.327
+   },
+   "Grass": {
+    "service": 0.6321,
+    "retour": 0.3382
+   }
+  },
+  "matchs": 29
+ },
+ {
+  "service": 0.6331,
+  "retour": 0.3563,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6347,
+    "retour": 0.3604
+   },
+   "Clay": {
+    "service": 0.6146,
+    "retour": 0.3695
+   },
+   "Grass": {
+    "service": 0.6423,
+    "retour": 0.3278
+   }
+  },
+  "matchs": 25
+ },
+ {
+  "service": 0.6604,
+  "retour": 0.3273,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6656,
+    "retour": 0.2935
+   },
+   "Clay": {
+    "service": 0.6509,
+    "retour": 0.3502
+   },
+   "Grass": {
+    "service": 0.6787,
+    "retour": 0.3305
+   }
+  },
+  "matchs": 48
+ },
+ {
+  "service": 0.6355,
+  "retour": 0.3521,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6211,
+    "retour": 0.3221
+   },
+   "Clay": {
+    "service": 0.644,
+    "retour": 0.3771
+   },
+   "Grass": {
+    "service": 0.6354,
+    "retour": 0.3243
+   }
+  },
+  "matchs": 39
+ },
+ {
+  "service": 0.6501,
+  "retour": 0.3367,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6667,
+    "retour": 0.3487
+   },
+   "Clay": {
+    "service": 0.6016,
+    "retour": 0.327
+   },
+   "Grass": {
+    "service": 0.6553,
+    "retour": 0.3031
+   }
+  },
+  "matchs": 82
+ },
+ {
+  "service": 0.6335,
+  "retour": 0.3528,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6372,
+    "retour": 0.3461
+   },
+   "Clay": {
+    "service": 0.6211,
+    "retour": 0.3716
+   },
+   "Grass": {
+    "service": 0.6388,
+    "retour": 0.3481
+   }
+  },
+  "matchs": 49
+ },
+ {
+  "service": 0.6288,
+  "retour": 0.3573,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6394,
+    "retour": 0.3437
+   },
+   "Clay": {
+    "service": 0.6173,
+    "retour": 0.3819
+   },
+   "Grass": {
+    "service": 0.6047,
+    "retour": 0.3743
+   }
+  },
+  "matchs": 31
+ },
+ {
+  "service": 0.603,
+  "retour": 0.3828,
+  "surfaces": {
+   "Hard": {
+    "service": 0.608,
+    "retour": 0.3882
+   },
+   "Clay": {
+    "service": 0.5914,
+    "retour": 0.3856
+   },
+   "Grass": {
+    "service": 0.6048,
+    "retour": 0.3609
+   }
+  },
+  "matchs": 42
+ },
+ {
+  "service": 0.6072,
+  "retour": 0.3774,
+  "surfaces": {
+   "Hard": {
+    "service": 0.5981,
+    "retour": 0.3756
+   },
+   "Clay": {
+    "service": 0.6143,
+    "retour": 0.3751
+   },
+   "Grass": {
+    "service": 0.6234,
+    "retour": 0.387
+   }
+  },
+  "matchs": 75
+ },
+ {
+  "service": 0.6418,
+  "retour": 0.3421,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6329,
+    "retour": 0.3381
+   },
+   "Clay": {
+    "service": 0.6536,
+    "retour": 0.3535
+   },
+   "Grass": {
+    "service": 0.638,
+    "retour": 0.3174
+   }
+  },
+  "matchs": 52
+ },
+ {
+  "service": 0.6549,
+  "retour": 0.3278,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6692,
+    "retour": 0.3237
+   },
+   "Clay": {
+    "service": 0.5978,
+    "retour": 0.3522
+   },
+   "Grass": {
+    "service": 0.6619,
+    "retour": 0.3199
+   }
+  },
+  "matchs": 40
+ },
+ {
+  "service": 0.6546,
+  "retour": 0.3258,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6599,
+    "retour": 0.3045
+   },
+   "Clay": {
+    "service": 0.6408,
+    "retour": 0.3752
+   },
+   "Grass": {
+    "service": 0.6581,
+    "retour": 0.3144
+   }
+  },
+  "matchs": 116
+ },
+ {
+  "service": 0.6879,
+  "retour": 0.2918,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6936,
+    "retour": 0.2781
+   },
+   "Clay": {
+    "service": 0.6628,
+    "retour": 0.2722
+   },
+   "Grass": {
+    "service": 0.6931,
+    "retour": 0.32
+   }
+  },
+  "matchs": 33
+ },
+ {
+  "service": 0.6212,
+  "retour": 0.3584,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6195,
+    "retour": 0.3555
+   },
+   "Clay": {
+    "service": 0.6258,
+    "retour": 0.3657
+   },
+   "Grass": {
+    "service": 0.6212,
+    "retour": 0.3584
+   }
+  },
+  "matchs": 30
+ },
+ {
+  "service": 0.6202,
+  "retour": 0.3593,
+  "surfaces": {
+   "Hard": {
+    "service": 0.631,
+    "retour": 0.3457
+   },
+   "Clay": {
+    "service": 0.6054,
+    "retour": 0.3836
+   },
+   "Grass": {
+    "service": 0.609,
+    "retour": 0.3596
+   }
+  },
+  "matchs": 30
+ },
+ {
+  "service": 0.6284,
+  "retour": 0.351,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6359,
+    "retour": 0.3479
+   },
+   "Clay": {
+    "service": 0.6135,
+    "retour": 0.3647
+   },
+   "Grass": {
+    "service": 0.642,
+    "retour": 0.3238
+   }
+  },
+  "matchs": 66
+ },
+ {
+  "service": 0.6053,
+  "retour": 0.3734,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6029,
+    "retour": 0.3672
+   },
+   "Clay": {
+    "service": 0.6071,
+    "retour": 0.3783
+   },
+   "Grass": {
+    "service": 0.6122,
+    "retour": 0.391
+   }
+  },
+  "matchs": 30
+ },
+ {
+  "service": 0.6346,
+  "retour": 0.3434,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6272,
+    "retour": 0.3472
+   },
+   "Clay": {
+    "service": 0.6438,
+    "retour": 0.3569
+   },
+   "Grass": {
+    "service": 0.6516,
+    "retour": 0.3077
+   }
+  },
+  "matchs": 84
+ },
+ {
+  "service": 0.6377,
+  "retour": 0.34,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6379,
+    "retour": 0.3469
+   },
+   "Clay": {
+    "service": 0.6086,
+    "retour": 0.3126
+   },
+   "Grass": {
+    "service": 0.6655,
+    "retour": 0.3433
+   }
+  },
+  "matchs": 49
+ },
+ {
+  "service": 0.5957,
+  "retour": 0.382,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6034,
+    "retour": 0.3763
+   },
+   "Clay": {
+    "service": 0.5728,
+    "retour": 0.406
+   },
+   "Grass": {
+    "service": 0.6056,
+    "retour": 0.3644
+   }
+  },
+  "matchs": 57
+ },
+ {
+  "service": 0.6603,
+  "retour": 0.3172,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6637,
+    "retour": 0.3092
+   },
+   "Clay": {
+    "service": 0.6575,
+    "retour": 0.3474
+   },
+   "Grass": {
+    "service": 0.6443,
+    "retour": 0.3191
+   }
+  },
+  "matchs": 28
+ },
+ {
+  "service": 0.6282,
+  "retour": 0.349,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6377,
+    "retour": 0.3417
+   },
+   "Clay": {
+    "service": 0.6057,
+    "retour": 0.3626
+   },
+   "Grass": {
+    "service": 0.6455,
+    "retour": 0.3443
+   }
+  },
+  "matchs": 46
+ },
+ {
+  "service": 0.6473,
+  "retour": 0.3296,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6351,
+    "retour": 0.3102
+   },
+   "Clay": {
+    "service": 0.6466,
+    "retour": 0.3728
+   },
+   "Grass": {
+    "service": 0.6768,
+    "retour": 0.3268
+   }
+  },
+  "matchs": 47
+ },
+ {
+  "service": 0.6249,
+  "retour": 0.3513,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6316,
+    "retour": 0.3467
+   },
+   "Clay": {
+    "service": 0.6164,
+    "retour": 0.3836
+   },
+   "Grass": {
+    "service": 0.6081,
+    "retour": 0.319
+   }
+  },
+  "matchs": 48
+ },
+ {
+  "service": 0.5928,
+  "retour": 0.3826,
+  "surfaces": {
+   "Hard": {
+    "service": 0.5812,
+    "retour": 0.3593
+   },
+   "Clay": {
+    "service": 0.6008,
+    "retour": 0.4013
+   },
+   "Grass": {
+    "service": 0.5913,
+    "retour": 0.3607
+   }
+  },
+  "matchs": 42
+ },
+ {
+  "service": 0.6997,
+  "retour": 0.2756,
+  "surfaces": {
+   "Hard": {
+    "service": 0.7142,
+    "retour": 0.2774
+   },
+   "Clay": {
+    "service": 0.6859,
+    "retour": 0.2955
+   },
+   "Grass": {
+    "service": 0.6676,
+    "retour": 0.2425
+   }
+  },
+  "matchs": 57
+ },
+ {
+  "service": 0.6185,
+  "retour": 0.3565,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6097,
+    "retour": 0.3629
+   },
+   "Clay": {
+    "service": 0.6293,
+    "retour": 0.3346
+   },
+   "Grass": {
+    "service": 0.634,
+    "retour": 0.3519
+   }
+  },
+  "matchs": 25
+ },
+ {
+  "service": 0.6373,
+  "retour": 0.3374,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6439,
+    "retour": 0.3316
+   },
+   "Clay": {
+    "service": 0.6157,
+    "retour": 0.3515
+   },
+   "Grass": {
+    "service": 0.6316,
+    "retour": 0.3502
+   }
+  },
+  "matchs": 56
+ },
+ {
+  "service": 0.5783,
+  "retour": 0.3963,
+  "surfaces": {
+   "Hard": {
+    "service": 0.5328,
+    "retour": 0.3562
+   },
+   "Clay": {
+    "service": 0.6034,
+    "retour": 0.4187
+   },
+   "Grass": {
+    "service": 0.5744,
+    "retour": 0.3879
+   }
+  },
+  "matchs": 50
+ },
+ {
+  "service": 0.6226,
+  "retour": 0.352,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6291,
+    "retour": 0.3437
+   },
+   "Clay": {
+    "service": 0.6066,
+    "retour": 0.3795
+   },
+   "Grass": {
+    "service": 0.632,
+    "retour": 0.325
+   }
+  },
+  "matchs": 35
+ },
+ {
+  "service": 0.6391,
+  "retour": 0.3354,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6491,
+    "retour": 0.3468
+   },
+   "Clay": {
+    "service": 0.6163,
+    "retour": 0.3227
+   },
+   "Grass": {
+    "service": 0.6372,
+    "retour": 0.3097
+   }
+  },
+  "matchs": 34
+ },
+ {
+  "service": 0.5814,
+  "retour": 0.3928,
+  "surfaces": {
+   "Hard": {
+    "service": 0.5815,
+    "retour": 0.4023
+   },
+   "Clay": {
+    "service": 0.5524,
+    "retour": 0.3785
+   },
+   "Grass": {
+    "service": 0.5952,
+    "retour": 0.385
+   }
+  },
+  "matchs": 35
+ },
+ {
+  "service": 0.6545,
+  "retour": 0.3188,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6611,
+    "retour": 0.3254
+   },
+   "Clay": {
+    "service": 0.6237,
+    "retour": 0.3131
+   },
+   "Grass": {
+    "service": 0.6643,
+    "retour": 0.2881
+   }
+  },
+  "matchs": 44
+ },
+ {
+  "service": 0.6358,
+  "retour": 0.3358,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6358,
+    "retour": 0.3227
+   },
+   "Clay": {
+    "service": 0.6207,
+    "retour": 0.3611
+   },
+   "Grass": {
+    "service": 0.6546,
+    "retour": 0.3407
+   }
+  },
+  "matchs": 99
+ },
+ {
+  "service": 0.6703,
+  "retour": 0.3008,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6646,
+    "retour": 0.311
+   },
+   "Clay": {
+    "service": 0.644,
+    "retour": 0.2881
+   },
+   "Grass": {
+    "service": 0.6952,
+    "retour": 0.2898
+   }
+  },
+  "matchs": 26
+ },
+ {
+  "service": 0.5984,
+  "retour": 0.3726,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6093,
+    "retour": 0.3644
+   },
+   "Clay": {
+    "service": 0.5857,
+    "retour": 0.3832
+   },
+   "Grass": {
+    "service": 0.5969,
+    "retour": 0.3689
+   }
+  },
+  "matchs": 38
+ },
+ {
+  "service": 0.5936,
+  "retour": 0.3767,
+  "surfaces": {
+   "Hard": {
+    "service": 0.5942,
+    "retour": 0.3739
+   },
+   "Clay": {
+    "service": 0.585,
+    "retour": 0.391
+   },
+   "Grass": {
+    "service": 0.6144,
+    "retour": 0.35
+   }
+  },
+  "matchs": 56
+ },
+ {
+  "service": 0.7043,
+  "retour": 0.2659,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6993,
+    "retour": 0.2675
+   },
+   "Clay": {
+    "service": 0.6974,
+    "retour": 0.2775
+   },
+   "Grass": {
+    "service": 0.7274,
+    "retour": 0.2499
+   }
+  },
+  "matchs": 87
+ },
+ {
+  "service": 0.622,
+  "retour": 0.3477,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6333,
+    "retour": 0.3334
+   },
+   "Clay": {
+    "service": 0.6023,
+    "retour": 0.3816
+   },
+   "Grass": {
+    "service": 0.6166,
+    "retour": 0.3282
+   }
+  },
+  "matchs": 42
+ },
+ {
+  "service": 0.6282,
+  "retour": 0.3399,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6268,
+    "retour": 0.3438
+   },
+   "Clay": {
+    "service": 0.6221,
+    "retour": 0.3333
+   },
+   "Grass": {
+    "service": 0.6415,
+    "retour": 0.3368
+   }
+  },
+  "matchs": 29
+ },
+ {
+  "service": 0.617,
+  "retour": 0.3494,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6197,
+    "retour": 0.3475
+   },
+   "Clay": {
+    "service": 0.6026,
+    "retour": 0.3538
+   },
+   "Grass": {
+    "service": 0.6285,
+    "retour": 0.3508
+   }
+  },
+  "matchs": 64
+ },
+ {
+  "service": 0.6171,
+  "retour": 0.3491,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6171,
+    "retour": 0.3511
+   },
+   "Clay": {
+    "service": 0.6083,
+    "retour": 0.3742
+   },
+   "Grass": {
+    "service": 0.62,
+    "retour": 0.3339
+   }
+  },
+  "matchs": 70
+ },
+ {
+  "service": 0.7088,
+  "retour": 0.2568,
+  "surfaces": {
+   "Hard": {
+    "service": 0.7079,
+    "retour": 0.2646
+   },
+   "Clay": {
+    "service": 0.6891,
+    "retour": 0.2634
+   },
+   "Grass": {
+    "service": 0.7192,
+    "retour": 0.2402
+   }
+  },
+  "matchs": 45
+ },
+ {
+  "service": 0.6376,
+  "retour": 0.3278,
+  "surfaces": {
+   "Hard": {
+    "service": 0.628,
+    "retour": 0.3271
+   },
+   "Clay": {
+    "service": 0.6406,
+    "retour": 0.3315
+   },
+   "Grass": {
+    "service": 0.672,
+    "retour": 0.3265
+   }
+  },
+  "matchs": 31
+ },
+ {
+  "service": 0.6063,
+  "retour": 0.3591,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6034,
+    "retour": 0.3568
+   },
+   "Clay": {
+    "service": 0.6335,
+    "retour": 0.3725
+   },
+   "Grass": {
+    "service": 0.6007,
+    "retour": 0.3585
+   }
+  },
+  "matchs": 34
+ },
+ {
+  "service": 0.5844,
+  "retour": 0.3808,
+  "surfaces": {
+   "Hard": {
+    "service": 0.5831,
+    "retour": 0.3565
+   },
+   "Clay": {
+    "service": 0.5855,
+    "retour": 0.3981
+   },
+   "Grass": {
+    "service": 0.5844,
+    "retour": 0.3808
+   }
+  },
+  "matchs": 46
+ },
+ {
+  "service": 0.6261,
+  "retour": 0.339,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6481,
+    "retour": 0.3529
+   },
+   "Clay": {
+    "service": 0.5957,
+    "retour": 0.344
+   },
+   "Grass": {
+    "service": 0.6181,
+    "retour": 0.2883
+   }
+  },
+  "matchs": 48
+ },
+ {
+  "service": 0.7031,
+  "retour": 0.2599,
+  "surfaces": {
+   "Hard": {
+    "service": 0.7145,
+    "retour": 0.2571
+   },
+   "Clay": {
+    "service": 0.6692,
+    "retour": 0.2798
+   },
+   "Grass": {
+    "service": 0.7056,
+    "retour": 0.2509
+   }
+  },
+  "matchs": 29
+ },
+ {
+  "service": 0.6186,
+  "retour": 0.3443,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6151,
+    "retour": 0.3468
+   },
+   "Clay": {
+    "service": 0.62,
+    "retour": 0.347
+   },
+   "Grass": {
+    "service": 0.6259,
+    "retour": 0.334
+   }
+  },
+  "matchs": 28
+ },
+ {
+  "service": 0.633,
+  "retour": 0.3273,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6229,
+    "retour": 0.3213
+   },
+   "Clay": {
+    "service": 0.6071,
+    "retour": 0.3485
+   },
+   "Grass": {
+    "service": 0.6454,
+    "retour": 0.3272
+   }
+  },
+  "matchs": 36
+ },
+ {
+  "service": 0.6113,
+  "retour": 0.3481,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6095,
+    "retour": 0.3521
+   },
+   "Clay": {
+    "service": 0.6017,
+    "retour": 0.3583
+   },
+   "Grass": {
+    "service": 0.627,
+    "retour": 0.3237
+   }
+  },
+  "matchs": 38
+ },
+ {
+  "service": 0.5864,
+  "retour": 0.3728,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6019,
+    "retour": 0.3601
+   },
+   "Clay": {
+    "service": 0.5617,
+    "retour": 0.3948
+   },
+   "Grass": {
+    "service": 0.5914,
+    "retour": 0.3615
+   }
+  },
+  "matchs": 49
+ },
+ {
+  "service": 0.6415,
+  "retour": 0.3174,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6485,
+    "retour": 0.32
+   },
+   "Clay": {
+    "service": 0.6171,
+    "retour": 0.326
+   },
+   "Grass": {
+    "service": 0.6501,
+    "retour": 0.299
+   }
+  },
+  "matchs": 44
+ },
+ {
+  "service": 0.618,
+  "retour": 0.3408,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6117,
+    "retour": 0.3247
+   },
+   "Clay": {
+    "service": 0.6214,
+    "retour": 0.3577
+   },
+   "Grass": {
+    "service": 0.624,
+    "retour": 0.3323
+   }
+  },
+  "matchs": 31
+ },
+ {
+  "service": 0.6369,
+  "retour": 0.3169,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6371,
+    "retour": 0.3204
+   },
+   "Clay": {
+    "service": 0.6121,
+    "retour": 0.3134
+   },
+   "Grass": {
+    "service": 0.6707,
+    "retour": 0.3066
+   }
+  },
+  "matchs": 86
+ },
+ {
+  "service": 0.6302,
+  "retour": 0.3233,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6372,
+    "retour": 0.3226
+   },
+   "Clay": {
+    "service": 0.5927,
+    "retour": 0.3343
+   },
+   "Grass": {
+    "service": 0.6531,
+    "retour": 0.3122
+   }
+  },
+  "matchs": 61
+ },
+ {
+  "service": 0.6121,
+  "retour": 0.3414,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6167,
+    "retour": 0.3322
+   },
+   "Clay": {
+    "service": 0.6027,
+    "retour": 0.3723
+   },
+   "Grass": {
+    "service": 0.6074,
+    "retour": 0.3361
+   }
+  },
+  "matchs": 44
+ },
+ {
+  "service": 0.5906,
+  "retour": 0.3621,
+  "surfaces": {
+   "Hard": {
+    "service": 0.5906,
+    "retour": 0.3656
+   },
+   "Clay": {
+    "service": 0.5881,
+    "retour": 0.3619
+   },
+   "Grass": {
+    "service": 0.5948,
+    "retour": 0.3461
+   }
+  },
+  "matchs": 47
+ },
+ {
+  "service": 0.6113,
+  "retour": 0.3414,
+  "surfaces": {
+   "Hard": {
+    "service": 0.626,
+    "retour": 0.3404
+   },
+   "Clay": {
+    "service": 0.5812,
+    "retour": 0.3512
+   },
+   "Grass": {
+    "service": 0.5972,
+    "retour": 0.3326
+   }
+  },
+  "matchs": 28
+ },
+ {
+  "service": 0.6176,
+  "retour": 0.3345,
+  "surfaces": {
+   "Hard": {
+    "service": 0.621,
+    "retour": 0.3351
+   },
+   "Clay": {
+    "service": 0.6036,
+    "retour": 0.3478
+   },
+   "Grass": {
+    "service": 0.6304,
+    "retour": 0.3137
+   }
+  },
+  "matchs": 95
+ },
+ {
+  "service": 0.5887,
+  "retour": 0.3633,
+  "surfaces": {
+   "Hard": {
+    "service": 0.579,
+    "retour": 0.3569
+   },
+   "Clay": {
+    "service": 0.5968,
+    "retour": 0.375
+   },
+   "Grass": {
+    "service": 0.5883,
+    "retour": 0.3415
+   }
+  },
+  "matchs": 27
+ },
+ {
+  "service": 0.5823,
+  "retour": 0.3693,
+  "surfaces": {
+   "Hard": {
+    "service": 0.5849,
+    "retour": 0.3648
+   },
+   "Clay": {
+    "service": 0.584,
+    "retour": 0.3874
+   },
+   "Grass": {
+    "service": 0.5663,
+    "retour": 0.3585
+   }
+  },
+  "matchs": 38
+ },
+ {
+  "service": 0.585,
+  "retour": 0.366,
+  "surfaces": {
+   "Hard": {
+    "service": 0.5837,
+    "retour": 0.3414
+   },
+   "Clay": {
+    "service": 0.5814,
+    "retour": 0.3925
+   },
+   "Grass": {
+    "service": 0.5943,
+    "retour": 0.3747
+   }
+  },
+  "matchs": 27
+ },
+ {
+  "service": 0.5817,
+  "retour": 0.3684,
+  "surfaces": {
+   "Hard": {
+    "service": 0.5842,
+    "retour": 0.3621
+   },
+   "Clay": {
+    "service": 0.5767,
+    "retour": 0.3832
+   },
+   "Grass": {
+    "service": 0.5858,
+    "retour": 0.347
+   }
+  },
+  "matchs": 73
+ },
+ {
+  "service": 0.6213,
+  "retour": 0.324,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6306,
+    "retour": 0.3215
+   },
+   "Clay": {
+    "service": 0.5914,
+    "retour": 0.3339
+   },
+   "Grass": {
+    "service": 0.6349,
+    "retour": 0.3171
+   }
+  },
+  "matchs": 32
+ },
+ {
+  "service": 0.5965,
+  "retour": 0.345,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6014,
+    "retour": 0.3495
+   },
+   "Clay": {
+    "service": 0.5659,
+    "retour": 0.3418
+   },
+   "Grass": {
+    "service": 0.6197,
+    "retour": 0.3315
+   }
+  },
+  "matchs": 31
+ },
+ {
+  "service": 0.6123,
+  "retour": 0.3288,
+  "surfaces": {
+   "Hard": {
+    "service": 0.603,
+    "retour": 0.3359
+   },
+   "Clay": {
+    "service": 0.6063,
+    "retour": 0.3396
+   },
+   "Grass": {
+    "service": 0.6434,
+    "retour": 0.2997
+   }
+  },
+  "matchs": 41
+ },
+ {
+  "service": 0.5872,
+  "retour": 0.3531,
+  "surfaces": {
+   "Hard": {
+    "service": 0.5985,
+    "retour": 0.3344
+   },
+   "Clay": {
+    "service": 0.5824,
+    "retour": 0.3668
+   },
+   "Grass": {
+    "service": 0.5852,
+    "retour": 0.3359
+   }
+  },
+  "matchs": 25
+ },
+ {
+  "service": 0.6508,
+  "retour": 0.2881,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6391,
+    "retour": 0.293
+   },
+   "Clay": {
+    "service": 0.6493,
+    "retour": 0.2937
+   },
+   "Grass": {
+    "service": 0.6784,
+    "retour": 0.2729
+   }
+  },
+  "matchs": 53
+ },
+ {
+  "service": 0.6052,
+  "retour": 0.3332,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6028,
+    "retour": 0.3315
+   },
+   "Clay": {
+    "service": 0.5936,
+    "retour": 0.3194
+   },
+   "Grass": {
+    "service": 0.6205,
+    "retour": 0.3474
+   }
+  },
+  "matchs": 25
+ },
+ {
+  "service": 0.6104,
+  "retour": 0.3279,
+  "surfaces": {
+   "Hard": {
+    "service": 0.6014,
+    "retour": 0.3287
+   },
+   "Clay": {
+    "service": 0.6218,
+    "retour": 0.3302
+   },
+   "Grass": {
+    "service": 0.6283,
+    "retour": 0.323
+   }
+  },
+  "matchs": 30
+ },
+ {
+  "service": 0.5837,
+  "retour": 0.3529,
+  "surfaces": {
+   "Hard": {
+    "service": 0.5826,
+    "retour": 0.3304
+   },
+   "Clay": {
+    "service": 0.5866,
+    "retour": 0.3789
+   },
+   "Grass": {
+    "service": 0.5782,
+    "retour": 0.3381
+   }
+  },
+  "matchs": 47
+ },
+ {
+  "service": 0.5832,
+  "retour": 0.3456,
+  "surfaces": {
+   "Hard": {
+    "service": 0.5838,
+    "retour": 0.3542
+   },
+   "Clay": {
+    "service": 0.5868,
+    "retour": 0.3405
+   },
+   "Grass": {
+    "service": 0.5696,
+    "retour": 0.336
+   }
+  },
+  "matchs": 30
+ },
+ {
+  "service": 0.5821,
+  "retour": 0.3435,
+  "surfaces": {
+   "Hard": {
+    "service": 0.5872,
+    "retour": 0.3469
+   },
+   "Clay": {
+    "service": 0.5692,
+    "retour": 0.3449
+   },
+   "Grass": {
+    "service": 0.5735,
+    "retour": 0.3232
+   }
+  },
+  "matchs": 41
+ },
+ {
+  "service": 0.5901,
+  "retour": 0.3255,
+  "surfaces": {
+   "Hard": {
+    "service": 0.589,
+    "retour": 0.309
+   },
+   "Clay": {
+    "service": 0.5937,
+    "retour": 0.3451
+   },
+   "Grass": {
+    "service": 0.5798,
+    "retour": 0.3063
+   }
+  },
+  "matchs": 42
+ }
+]
