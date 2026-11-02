@@ -15,7 +15,7 @@ const ORDRE_TOUR = {R16: 0, QF: 1, SF: 2, F: 3};
 const AFFLUENCE = {"250": 0.45, "500": 0.6, "1000": 0.75, Majeur: 0.95};
 const AFFLUENCE_TOUR = {R16: 0.6, QF: 0.8, SF: 0.95, F: 1};
 const AFFLUENCE_COURT = {central: 1, sf: 0.85, qf: 0.75, r16a: 0.6, r16b: 0.6};
-const ENTRAINEMENT_LIEU = {service: "service", retour: "retour", physique: "physique", repos: "repos"};
+const ENTRAINEMENT_LIEU = {service: "service", retour: "retour", physique: "physique", repos: "repos", soins: "infirmerie"};
 
 export const jourDe = m => m.jour || JOUR_PAR_DEFAUT[m.tour] || 7;
 export const semainesFaites = e => (e && e.saison) ? (e.saison.semaine_atteinte || e.saison.semaines.length) : 0;
@@ -48,8 +48,11 @@ export function vueSemaine(S, k) {
           semaines: S.semaines.filter(w => w.semaine <= k), articles: S.articles.filter(a => a.semaine <= k),
           incidents: (S.incidents || []).filter(i => i.semaine <= k),
           vestiaires: (S.vestiaires || []).filter(v => v.semaine <= k),
-          federation: (S.federation || []).filter(f => f.semaine <= k)};
+          federation: (S.federation || []).filter(f => f.semaine <= k),
+          blessures: (S.blessures || []).filter(b => b.semaine <= k)};
 }
+
+const BLESSURES_MATCH = ["blessure", "rechute", "aggravation"];
 
 // Le cœur : où est chacun, que fait-il, qui joue où, que s'est-il dit, ce jour-là.
 export function vueJour(S, k, d) {
@@ -65,9 +68,12 @@ export function vueJour(S, k, d) {
   const federation = (S.federation || []).filter(f => f.semaine === k);
   const negos = (S.negociations || []).filter(n => n.semaine === k);
   const article = S.articles.find(a => a.semaine === k);
+  const blessuresSem = (S.blessures || []).filter(b => b.semaine === k);
+  const santeDebut = (socialA(S, k - 1) || {});
 
   // matchs du jour et attribution des courts
-  const duJour = matchsSem.filter(m => jourDe(m) === jour).sort((a, b) => ORDRE_TOUR[a.tour] - ORDRE_TOUR[b.tour]);
+  // les forfaits ne se jouent pas : pas de court, seulement un événement
+  const duJour = matchsSem.filter(m => jourDe(m) === jour && !m.forfait).sort((a, b) => ORDRE_TOUR[a.tour] - ORDRE_TOUR[b.tour]);
   const matchs = duJour.map((m, i) => {
     const c = (COURTS_DU_JOUR[m.tour] || COURTS_DU_JOUR.R16)[i] || "r16b";
     const s = m.soutien || {};
@@ -80,15 +86,32 @@ export function vueJour(S, k, d) {
 
   // jauges du jour : départ de semaine, puis après chaque match joué jusqu'à ce jour
   const socFin = jour === 7 ? socialA(S, k) : null;
-  const etat = id => {
+  // aujourdhui=false : l'état du matin, avant le match du jour (l'horloge de la lecture choisit)
+  const etat = (id, aujourdhui = true) => {
     const dec = decisions.get(id) || {};
     let moral = dec.moral, pop = dec.popularite, rep = dec.reputation, fat = dec.fatigue || 0;
-    for (const m of matchsSem.filter(x => jourDe(x) <= jour && (x.vainqueur === id || x.perdant === id))) {
+    const fini = x => (aujourdhui ? jourDe(x) <= jour : jourDe(x) < jour);
+    for (const m of matchsSem.filter(x => fini(x) && (x.vainqueur === id || x.perdant === id))) {
       if (m.moral_apres) { moral = m.moral_apres[id]; pop = m.popularite_apres[id]; }
       if (m.fatigue_apres) fat = m.fatigue_apres[id];
     }
-    if (socFin && socFin[id]) ({moral, popularite: pop, reputation: rep} = socFin[id]);
-    return {moral, popularite: pop, reputation: rep, fatigue: fat};
+    if (aujourdhui && socFin && socFin[id]) ({moral, popularite: pop, reputation: rep} = socFin[id]);
+    return {moral, popularite: pop, reputation: rep, fatigue: fat, sante: santeA(id, aujourdhui)};
+  };
+  // santé : début de semaine, puis blessures de la semaine jusqu'à ce jour
+  const santeA = (id, aujourdhui = true) => {
+    const s0 = santeDebut[id] || {};
+    let zone = s0.blessure ? s0.zone : "", gravite = s0.blessure ? s0.gravite : "";
+    const chroniques = [...(s0.chroniques || [])];
+    for (const b of blessuresSem.filter(x => x.joueur === id && BLESSURES_MATCH.includes(x.type)
+                                         && (aujourdhui ? jourDe(x) <= jour : jourDe(x) < jour))) {
+      zone = b.zone; gravite = b.gravite;
+      if (b.chronique && !chroniques.includes(b.zone)) chroniques.push(b.zone);
+    }
+    if (jour === 7 && aujourdhui) {
+      for (const b of blessuresSem.filter(x => x.joueur === id && x.type === "gueri")) { zone = ""; gravite = ""; }
+    }
+    return {zone, gravite, chroniques, blesse: !!zone};
   };
 
   const lieux = new Map();
@@ -100,6 +123,9 @@ export function vueJour(S, k, d) {
     const elimine = sesMatchs.find(m => m.perdant === j.id && jourDe(m) < jour);
     const prochain = sesMatchs.find(m => jourDe(m) > jour);
     const m = enMatch.get(j.id);
+    const sante = santeA(j.id);
+    const abandonne = sesMatchs.find(x => x.abandon === j.id && jourDe(x) < jour);
+    const forfait = sesMatchs.find(x => x.forfait === j.id && jourDe(x) <= jour);
     let lieu, activite;
     if (!tournoi) {
       lieu = dec.blessure > 0 ? "infirmerie" : entr;
@@ -111,8 +137,12 @@ export function vueJour(S, k, d) {
     } else if (!dec.jouer || !sesMatchs.length) {
       lieu = dec.blessure > 0 ? "infirmerie" : entr;
       activite = dec.blessure > 0 ? "blessé, ne joue pas cette semaine" : `ne joue pas ${tournoi.nom} (${dec.entrainement})`;
+    } else if (forfait || abandonne) {
+      lieu = "infirmerie";
+      activite = forfait ? `forfait (${sante.zone || "blessure"}), soigné à l'infirmerie`
+        : `a abandonné contre ${nom(abandonne.vainqueur)} (${sante.zone || "blessure"}), soigné à l'infirmerie`;
     } else if (elimine) {
-      lieu = dec.blessure > 0 ? "infirmerie" : entr;
+      lieu = dec.blessure > 0 || sante.blesse ? "infirmerie" : entr;
       activite = `éliminé par ${nom(elimine.vainqueur)} (${TOURS[elimine.tour]})`;
     } else if (prochain) {
       lieu = jour === 5 ? "presse" : entr === "physique" || entr === "repos" ? entr : entr;
@@ -122,8 +152,13 @@ export function vueJour(S, k, d) {
       lieu = "central";
       activite = "vainqueur du tournoi";
     }
+    // avant / après le match du jour : l'écran de contrôle choisit selon l'heure
+    const adv = m ? (m.a === j.id ? m.b : m.a) : null;
+    const apres = m ? (m.a === j.id ? `a battu ${nom(adv)} ${m.score}` : `battu par ${nom(adv)} ${m.score}`) : null;
     lieux.set(j.id, {lieu, activite, match: m || null, ...etat(j.id), bulle: null, carton: null,
-                     coupe: !!(tournoi && jour === 7 && dec.tour === "V"), blesse: dec.blessure > 0});
+                     coupe: !!(tournoi && jour === 7 && dec.tour === "V"), blesse: dec.blessure > 0 || sante.blesse,
+                     avant: m ? {...etat(j.id, false), activite: `${TOURS[m.tour]} contre ${nom(adv)}, ${nomCourt(m.court)}`} : null,
+                     activiteApres: apres});
   }
 
   // le soir après un match chargé, on se croise aux vestiaires (montré le lendemain matin)
@@ -152,6 +187,25 @@ export function vueJour(S, k, d) {
     const pub = Math.abs(m.soutienA) >= 0.3 ? `, public pour ${court(m.soutienA > 0 ? m.a : m.b)}` : "";
     evenements.unshift({type: "match", qui: m.a, lieu: m.court, match: m,
       texte: `${TOURS[m.tour].replace(/^./, c => c.toUpperCase())}, ${nomCourt(m.court)} : ${court(m.a)} bat ${court(m.b)} ${m.score}${pub}`});
+  }
+  for (const b of blessuresSem.filter(x => jourDe(x) === jour)) {
+    const mm = matchs.find(x => [x.a, x.b].includes(b.joueur) && x.tour === b.tour);
+    if (BLESSURES_MATCH.includes(b.type)) {
+      const L = lieux.get(b.joueur);
+      if (L && b.abandon) L.bulle = {role: "Abandon", texte: `Blessure : ${b.zone}.`};
+      evenements.push({type: "blessure", qui: b.joueur, lieu: mm ? mm.court : "infirmerie", match: mm || null,
+        set: b.set, abandon: b.abandon, gravite: b.gravite, chronique: b.chronique,
+        texte: `${court(b.joueur)} ${b.type === "aggravation" ? "aggrave sa blessure" : b.type === "rechute" ? "rechute" : "se blesse"} `
+          + `(${b.zone}, ${b.gravite})${b.set ? ` au ${b.set}${b.set === 1 ? "er" : "e"} set` : " en fin de match"} contre ${court(b.adversaire)}`
+          + `${b.abandon ? " et abandonne" : ""}${b.chronique ? " ; la blessure devient chronique" : ""}`});
+    } else if (b.type === "forfait") {
+      evenements.push({type: "forfait", qui: b.joueur, lieu: "infirmerie",
+        texte: `${court(b.joueur)} déclare forfait (${b.zone}, ${b.gravite}) : ${court(b.adversaire)} passe sans jouer (${TOURS[b.tour]})`});
+    } else if (b.type === "gueri") {
+      evenements.push({type: "gueri", qui: b.joueur, lieu: "infirmerie", texte: `${court(b.joueur)} est guéri (${b.zone}) et reprend l'entraînement`});
+    } else if (b.type === "poussee") {
+      evenements.push({type: "poussee", qui: b.joueur, lieu: "infirmerie", texte: `Poussée chronique pour ${court(b.joueur)} (${b.zone}) : la fatigue réveille la douleur`});
+    }
   }
   const figurants = {};
   if (tournoi && jour === 5) {

@@ -14,6 +14,7 @@ import statistics
 from dataclasses import replace
 
 from . import agents, social
+from . import blessures as bl
 from .agents import ENTRAINEURS, SPONSORS
 from .joueurs import (RETOUR_MOYEN, Etat, apres_match, creer_joueurs, fin_de_semaine,
                       force_effective, points_initiaux)
@@ -64,7 +65,14 @@ class Saison:
             self.sociaux = {j.id: _soc.initial(j.personnalite, rangs[j.id], len(self.joueurs))
                             for j in self.joueurs}
             self.relations: dict = {}
-            self.journal.update({"incidents": [], "vestiaires": [], "federation": [], "social": []})
+            # blessures détaillées (zone, gravité, chronicité) : tennis/blessures.py
+            self.sante = {j.id: bl.Sante() for j in self.joueurs}
+            # hygiène de vie tirée par paire de jumeaux (flux à part : le reste ne bouge pas)
+            par_paire = {k: list(bl.HYGIENES)[random.Random(f"{graine}-paire{k}-hygiene").choices(
+                range(3), weights=(1, 2, 1))[0]] for k in {j.paire for j in self.joueurs}}
+            self.hygiene = {j.id: par_paire[j.paire] for j in self.joueurs}
+            self.journal.update({"incidents": [], "vestiaires": [], "federation": [], "social": [],
+                                 "blessures": []})
             self._instantane(0)
 
     # ----------------------------------------------------------------- outils
@@ -98,6 +106,8 @@ class Saison:
         classement = self.classement()
         self.progres(f"semaine {semaine} : {tournoi.nom if tournoi else 'pas de tournoi'}")
         decisions, tactiques, conseils, etats_avant = {}, {}, {}, dict(self.etats)
+        avis_medicaux: dict = {}
+        sante_avant = dict(self.sante) if self.social else {}
         sociaux_avant = dict(self.sociaux) if self.social else {}
         for j in self.joueurs:
             e = self.etats[j.id]
@@ -112,12 +122,32 @@ class Saison:
                     conseils[j.id] = {"entraineur": nom_c, "tactique": tac, "conseil": conseil,
                                       "recommande_jouer": reco, "repli": repli}
                 souv = en_texte(recuperer(self.memoires[j.id], semaine))
+                sante_txt = medecin_txt = ""
+                if self.social:
+                    sante_txt = (bl.en_texte(self.sante[j.id]) + " ; ton hygiène de vie est "
+                                 + bl.HYGIENES_TXT[self.hygiene[j.id]] + " ; ton style : " + j.style())
+                    if self._suivi_medical(j.id):
+                        avis = agents.avis_medical(self.llm, j, e, sante_txt, tournoi)
+                        avis_medicaux[j.id] = avis
+                        medecin_txt = f"{avis['avis']}. {avis['message']}".strip()
                 d = agents.decision_joueur(self.llm, j, e, semaine, tournoi, a_venir, conseil,
                                            souv, classement.index(j.id) + 1, self.version_prompts,
-                                           social.en_texte(self.sociaux[j.id]) if self.social else "")
+                                           social.en_texte(self.sociaux[j.id]) if self.social else "",
+                                           sante_txt, medecin_txt)
+                a = avis_medicaux.get(j.id)
+                if a and not a.get("repli") and (a["avis"] == "jouer") != d.jouer and tournoi:
+                    self._souvenir(j.id, semaine, f"Le médecin conseillait « {a['avis']} » ; j'ai choisi de "
+                                   f"{'jouer' if d.jouer else 'ne pas jouer'} {tournoi.nom}.", 5)
             else:
                 d = agents.decision_baseline(e, tournoi, semaine)
+                if self.social and e.blessure > 0:          # règle fixe : blessé, on se soigne
+                    d = replace(d, entrainement="soins")
                 tactiques[j.id] = "equilibre"
+            if self.social and d.jouer and self.sante[j.id].gravite == "sérieuse" and bl.blesse(self.sante[j.id]):
+                # blessure sérieuse : le médecin du tournoi le déclare inapte, quoi qu'il ait décidé
+                d = replace(d, jouer=False, raisonnement=d.raisonnement + " [déclaré inapte par le médecin du tournoi]")
+                self._souvenir(j.id, semaine, f"Le médecin du tournoi m'a déclaré inapte ({self.sante[j.id].zone}) : "
+                               "je ne peux pas jouer cette semaine.", 6)
             decisions[j.id] = d
             c = conseils.get(j.id)
             if tournoi and c and not c["repli"] and c["recommande_jouer"] != d.jouer:
@@ -139,6 +169,9 @@ class Saison:
 
         if self.social:
             for j in self.joueurs:
+                self._sante_fin_de_semaine(semaine, j.id, decisions[j.id].entrainement,
+                                           etats_avant[j.id].bonus_service, etats_avant[j.id].bonus_retour)
+            for j in self.joueurs:
                 s = social.apres_tournoi(self.sociaux[j.id], tours.get(j.id))
                 self.sociaux[j.id] = social.fin_de_semaine(s, j.id in tours, decisions[j.id].entrainement,
                                                            etats_avant[j.id].fatigue)
@@ -157,6 +190,9 @@ class Saison:
                 "tactique": tactiques.get(j.id), "conseil": conseils.get(j.id),
                 "fatigue": round(etats_avant[j.id].fatigue, 1), "blessure": etats_avant[j.id].blessure,
                 "tour": tours.get(j.id),
+                **({"medecin": avis_medicaux.get(j.id),
+                    "sante": {"zone": sante_avant[j.id].zone, "gravite": sante_avant[j.id].gravite,
+                              "chroniques": list(sante_avant[j.id].chroniques)}} if self.social else {}),
                 **({"moral": round(sociaux_avant[j.id].moral),
                     "popularite": round(sociaux_avant[j.id].popularite),
                     "reputation": round(sociaux_avant[j.id].reputation)} if self.social else {}),
@@ -189,11 +225,15 @@ class Saison:
                     continue
                 # programme jour par jour : moitié haute du tableau le premier jour du tour
                 self._jour = JOURS_TOUR[tour][0 if reels.index(k) < (len(reels) + 1) // 2 else 1]
-                gagnant, score = self._match(semaine, t, tour, a, b, tactiques)
+                absent = self._forfait(semaine, t, tour, a, b) if self.social else None
+                if absent:
+                    gagnant, score = (b if absent == a else a), "forfait"
+                else:
+                    gagnant, score = self._match(semaine, t, tour, a, b, tactiques)
                 perdant = b if gagnant == a else a
                 atteint[perdant] = tour
                 suivants.append(gagnant)
-                if rangs[gagnant] - rangs[perdant] >= 5:
+                if rangs[gagnant] - rangs[perdant] >= 5 and score != "forfait":
                     surprises.append(f"surprise : {self._nom(gagnant)} ({rangs[gagnant]}e) bat "
                                      f"{self._nom(perdant)} ({rangs[perdant]}e) en {NOMS_TOURS[tour]}, {score}")
             places = suivants
@@ -221,19 +261,22 @@ class Saison:
             ja, jb, a, b = jb, ja, b, a
         fa = force_effective(ja, self.etats[a], t.surface, tactiques.get(a, "equilibre"), jb)
         fb = force_effective(jb, self.etats[b], t.surface, tactiques.get(b, "equilibre"), ja)
-        contexte = None
+        contexte, physique, tirages = None, (), {}
         if self.social:
+            fa, fb = self._force_physique(a, fa), self._force_physique(b, fb)
             fa, fb, contexte = self._contexte_social(semaine, tour, a, b, fa, fb, cle_rng)
+            physique, tirages = self._risques_physiques(t, a, b, cle_rng, tactiques)
         res = jouer_match(fa, fb, rng, RETOUR_MOYEN, t.sets_gagnants(),
                           apres_set=contexte["apres_set"] if contexte else None,
-                          tilt=social.TILT if contexte else 0.0)
+                          tilt=social.TILT if contexte else 0.0, physique=physique)
         gagnant, perdant = (a, b) if res.vainqueur == 0 else (b, a)
         cinq = t.sets_gagnants() == 3
         sets_g = [(x, y) if gagnant == a else (y, x) for x, y in res.sets]
-        score = " ".join(f"{x}-{y}" for x, y in sets_g)
+        # un set interrompu à 0-0 (abandon avant le premier jeu) ne figure pas au score
+        score = " ".join(f"{x}-{y}" for x, y in sets_g if x + y > 0) + (" ab." if res.abandon else "")
         for jid in (a, b):
             e, blesse = apres_match(self.etats[jid], jid == gagnant, cinq, tactiques.get(jid, "equilibre"),
-                                    rng)
+                                    rng, risque=not self.social)
             self.etats[jid] = e
             if blesse:
                 self._souvenir(jid, semaine, f"Je me suis blessé pendant mon {NOMS_TOURS[tour]} à {t.nom} "
@@ -254,6 +297,7 @@ class Saison:
                                                          b: round(self.etats[b].fatigue, 1)}})
         if self.social:
             self._apres_match_social(semaine, t, tour, (a, b), gagnant, res, score, contexte)
+            self._blessures_du_match(semaine, t, tour, (a, b), res, tirages, score)
         if tour == "F":
             self.journal["finales"].append({"semaine": semaine, "tournoi": t.nom, "a": a, "b": b,
                                             "vainqueur": gagnant, "score": score, "points": res.points,
@@ -264,7 +308,9 @@ class Saison:
     def _instantane(self, semaine: int) -> None:
         self.journal["social"].append({"semaine": semaine, "joueurs": {
             i: {"moral": round(s.moral, 1), "popularite": round(s.popularite, 1),
-                "reputation": round(s.reputation, 1)} for i, s in self.sociaux.items()}})
+                "reputation": round(s.reputation, 1), "blessure": self.sante[i].semaines,
+                "zone": self.sante[i].zone, "gravite": self.sante[i].gravite,
+                "chroniques": list(self.sante[i].chroniques)} for i, s in self.sociaux.items()}})
 
     def _relation(self, a: str, b: str) -> float:
         return self.relations.get(tuple(sorted((a, b))), 0.0)
@@ -396,6 +442,137 @@ class Saison:
             self._souvenir(jid, semaine, f"La fédération a examiné mes incidents : {d['decision']}"
                            + (f" de {d['montant']} euros" if d["montant"] else "") + f". « {d['communique']} »", 6)
 
+    # --------------------------------------------------------------- blessures
+    def _suivi_medical(self, jid: str) -> bool:
+        """Le staff médical intervient si le joueur est blessé, fragile ou très fatigué."""
+        s = self.sante[jid]
+        return bl.blesse(s) or bool(s.chroniques) or self.etats[jid].fatigue >= 6
+
+    def _force_physique(self, jid: str, f: Force) -> Force:
+        """Remplace le malus forfaitaire « joue blessé » (3 points) par celui de la zone touchée."""
+        e = self.etats[jid]
+        ms, mr = bl.malus(self.sante[jid], e.fatigue)
+        plat = 0.03 if e.blessure > 0 else 0.0
+        return Force(f.service + plat - ms, f.retour + plat - mr)
+
+    def _risques_physiques(self, t, a: str, b: str, cle_rng: str, tactiques: dict) -> tuple:
+        """Tire, avant le match, qui se blesse (ou aggrave sa blessure), après quel set, et s'il abandonne."""
+        rng_b = random.Random(cle_rng + "-blessure")     # flux dédié : les points ne bougent pas
+        max_sets = 2 * t.sets_gagnants() - 1
+        # point du match où la blessure survient : au-delà de la fin du match, elle survient après
+        dernier_point = 62 * max_sets
+        physique, tirages = [], {}
+        for idx, jid in enumerate((a, b)):
+            s, e = self.sante[jid], self.etats[jid]
+            if bl.blesse(s):
+                if rng_b.random() >= bl.risque_aggravation(s):
+                    continue
+                ev = bl.aggraver(rng_b, s)
+            else:
+                style, tac = self.par_id[jid].style(), tactiques.get(jid, "equilibre")
+                p = bl.risque_match(s, e.fatigue, self.par_id[jid].age, t.surface, max_sets == 5, e.endurance,
+                                    style, tac, self.hygiene[jid])
+                if rng_b.random() >= p:
+                    continue
+                ev = bl.tirer(rng_b, s, t.surface, style, tac)
+            n = rng_b.randint(4, dernier_point)
+            abandon = rng_b.random() < bl.proba_abandon(ev)
+            ms0, mr0 = bl.malus(s, 0)
+            ms1, mr1 = bl.malus(bl.appliquer(s, ev), 0)
+            physique.append((idx, n, max(0.0, ms1 - ms0), max(0.0, mr1 - mr0), abandon))
+            tirages[jid] = (ev, n)
+        return tuple(physique), tirages
+
+    def _blessures_du_match(self, semaine, t, tour, ids, res, tirages, score) -> None:
+        a, b = ids
+        survenues = {ids[q]: n_set for q, n_set in res.blessures}
+        abandonne = ids[1 - res.vainqueur] if res.abandon else None
+        for jid, (ev, _point) in tirages.items():
+            if res.abandon and jid not in survenues:
+                continue                                  # le match s'est arrêté avant
+            abandon = jid == abandonne
+            n = survenues.get(jid)                        # None : blessure en fin de match
+            self.sante[jid] = bl.appliquer(self.sante[jid], ev)
+            self.etats[jid] = replace(self.etats[jid], blessure=ev.semaines)
+            s = self.sociaux[jid]
+            self.sociaux[jid] = replace(s, moral=social.borne(s.moral + bl.delta_moral(ev, abandon)),
+                                        popularite=social.borne(s.popularite + (1.5 if abandon else 0)))
+            adv = b if jid == a else a
+            nature = "aggravation" if ev.aggravation else "rechute" if ev.rechute else "blessure"
+            self.journal["blessures"].append({
+                "semaine": semaine, "jour": self._jour, "tournoi": t.nom, "tour": tour, "joueur": jid,
+                "adversaire": adv, "type": nature, "zone": ev.zone, "gravite": ev.gravite,
+                "semaines": ev.semaines, "chronique": ev.chronique, "set": n,
+                "abandon": abandon, "score": score})
+            quand = (f"au {n}{'er' if n == 1 else 'e'} set") if n else "en fin de match"
+            texte = {"aggravation": f"J'ai aggravé ma blessure ({ev.zone}) en jouant blessé",
+                     "rechute": f"J'ai rechuté ({ev.zone}, {ev.gravite})",
+                     "blessure": f"Je me suis blessé ({ev.zone}, {ev.gravite})"}[nature]
+            self._souvenir(jid, semaine, f"{texte} {quand} contre {self._nom(adv)} à {t.nom}"
+                           + (" et j'ai dû abandonner" if abandon else "")
+                           + (f". Mon {ev.zone} est devenu un point faible chronique" if ev.chronique else "")
+                           + f" : {ev.semaines} semaine(s) d'arrêt prévue(s).", 8)
+        if abandonne:
+            self.journal["matchs"][-1]["abandon"] = abandonne
+
+    def _forfait(self, semaine, t, tour, a, b) -> str | None:
+        """Un joueur blessé sérieusement pendant le tournoi déclare forfait (modéré : une fois sur deux)."""
+        for jid in (a, b):
+            s = self.sante[jid]
+            recente = any(x["joueur"] == jid and x["semaine"] == semaine and x["type"] != "forfait"
+                          for x in self.journal["blessures"])
+            if not (bl.blesse(s) and recente):
+                continue
+            if s.gravite == "sérieuse" or (s.gravite == "modérée"
+                                           and random.Random(f"{self.graine}-{semaine}-{tour}-{jid}-forfait").random() < 0.5):
+                adv = b if jid == a else a
+                self.journal["matchs"].append({"semaine": semaine, "jour": self._jour, "tournoi": t.nom, "tour": tour,
+                                               "vainqueur": adv, "perdant": jid, "score": "forfait", "forfait": jid,
+                                               "tactiques": {}, "fatigue_apres": {a: round(self.etats[a].fatigue, 1),
+                                                                                  b: round(self.etats[b].fatigue, 1)}})
+                self.journal["blessures"].append({
+                    "semaine": semaine, "jour": self._jour, "tournoi": t.nom, "tour": tour, "joueur": jid,
+                    "adversaire": adv, "type": "forfait", "zone": s.zone, "gravite": s.gravite,
+                    "semaines": s.semaines, "chronique": False, "set": None, "abandon": False, "score": "forfait"})
+                self._souvenir(jid, semaine, f"J'ai déclaré forfait avant mon {NOMS_TOURS[tour]} à {t.nom} "
+                               f"({s.zone}, {s.gravite}).", 7)
+                soc = self.sociaux[jid]
+                self.sociaux[jid] = replace(soc, moral=social.borne(soc.moral - 3))
+                return jid
+        return None
+
+    def _sante_fin_de_semaine(self, semaine: int, jid: str, entrainement: str, avant_bs: float,
+                              avant_br: float) -> None:
+        soins = entrainement == "soins"
+        e = self.etats[jid]
+        rng = random.Random(f"{self.graine}-{semaine}-{jid}-sante")
+        avant = self.sante[jid]
+        s, evt = bl.fin_de_semaine(rng, avant, soins, e.fatigue)
+        self.sante[jid] = s
+        fatigue = max(0.0, e.fatigue - 1.0) if soins and not bl.blesse(avant) else e.fatigue
+        _r1, _r2, d_fatigue, part = bl.HYGIENES[self.hygiene[jid]]
+        bs, br = e.bonus_service, e.bonus_retour
+        if entrainement in ("service", "retour", "physique") and not bl.blesse(avant):
+            fatigue = max(0.0, min(10.0, fatigue + d_fatigue))
+            # progrès de la semaine (+0,002 dans joueurs.fin_de_semaine) : on en garde la part prévue
+            if entrainement == "service":
+                bs = max(0.0, min(0.02, avant_bs + (bs - avant_bs) * part))
+            elif entrainement == "retour":
+                br = max(0.0, min(0.02, avant_br + (br - avant_br) * part))
+        self.etats[jid] = replace(e, blessure=s.semaines, fatigue=fatigue, bonus_service=bs, bonus_retour=br)
+        soc = self.sociaux[jid]
+        if evt == "gueri":
+            self.sociaux[jid] = replace(soc, moral=social.borne(soc.moral + bl.MORAL_RETOUR))
+            self._souvenir(jid, semaine, f"Ma blessure ({avant.zone}) est guérie : je suis de retour.", 5)
+        elif evt == "poussee":
+            self.sociaux[jid] = replace(soc, moral=social.borne(soc.moral - 3))
+            self._souvenir(jid, semaine, f"Poussée de ma blessure chronique ({s.zone}) : la fatigue la réveille.", 6)
+        if evt:
+            self.journal["blessures"].append({
+                "semaine": semaine, "jour": 7, "tournoi": None, "tour": None, "joueur": jid, "adversaire": None,
+                "type": evt, "zone": avant.zone if evt == "gueri" else s.zone, "gravite": s.gravite or avant.gravite,
+                "semaines": s.semaines, "chronique": evt == "poussee", "set": None, "abandon": False, "score": None})
+
     def _presse(self, semaine: int, t, champion: str, atteint: dict, surprises: list, entrants: list):
         finale = next(m for m in reversed(self.journal["matchs"]) if m["tour"] == "F" and m["semaine"] == semaine)
         faits = [f"{self._nom(champion)} remporte le tournoi en battant {self._nom(finale['perdant'])} "
@@ -407,6 +584,9 @@ class Saison:
                 faits.append(f"incident : {self._nom(i['joueur'])} a reçu un "
                              f"{'avertissement' if i['sanction'] == 'avertissement' else 'point de pénalité'} "
                              f"pour {i['motif']} contre {self._nom(i['adversaire'])}")
+            for b in [b for b in self.journal["blessures"] if b["semaine"] == semaine and (b["abandon"] or b["type"] == "forfait")][:2]:
+                faits.append(f"{self._nom(b['joueur'])} a {'abandonné' if b['abandon'] else 'déclaré forfait'} "
+                             f"({NOMS_TOURS.get(b['tour'], b['tour'])}), blessé : {b['zone']}")
             for v in [v for v in self.journal["vestiaires"] if v["semaine"] == semaine and v["ton"] == "tension"][:1]:
                 faits.append(f"ambiance froide aux vestiaires entre {self._nom(v['vainqueur'])} et "
                              f"{self._nom(v['perdant'])}")
@@ -481,7 +661,11 @@ class Saison:
                                "penalites": self.sociaux[j.id].penalites,
                                "amendes": self.sociaux[j.id].amendes},
                     "relations": {(k[1] if k[0] == j.id else k[0]): round(v, 2)
-                                  for k, v in self.relations.items() if j.id in k}} if self.social else {}),
+                                  for k, v in self.relations.items() if j.id in k},
+                    "hygiene": self.hygiene[j.id],
+                    "sante": {"blessure": self.sante[j.id].semaines, "zone": self.sante[j.id].zone,
+                              "gravite": self.sante[j.id].gravite, "chroniques": list(self.sante[j.id].chroniques),
+                              "antecedents": list(self.sante[j.id].antecedents)}} if self.social else {}),
             })
         replis = sum(1 for s in self.journal["semaines"] for d in s["decisions"]
                      if d["repli"] or (d["conseil"] and d["conseil"]["repli"]))

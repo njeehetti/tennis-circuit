@@ -48,6 +48,30 @@ La couche est **active par défaut** avec `tennis.run` et coupée avec
 mode sobre : la comparaison LLM / règle fixe ne doit pas dépendre de ces
 effets.
 
+### Blessures, hygiène de vie et staff médical (couche sociale)
+
+Chaque match comporte un risque de blessure (`tennis/blessures.py`) qui
+dépend de la fatigue, de l'âge, de la surface, du format (3 ou 5 sets), de
+l'endurance et des antécédents, mais aussi du **style** (un serveur use
+épaule et dos, un relanceur ses jambes), de la **tactique** choisie
+(« service agressif » +15 %) et de l'**hygiène de vie** : dilettante (moins
+de fatigue, progrès réduits de moitié, risque +20 %), équilibrée, ou
+acharnée (progrès +50 %, mais plus de fatigue et risque +35 % dès 5/10 de
+fatigue). L'hygiène est tirée par paire de jumeaux, pour que la
+comparaison LLM / règle fixe reste équitable.
+
+Une blessure touche une zone (épaule, poignet, dos, abdominaux, cuisse,
+genou, cheville) avec une gravité, de la gêne (1 semaine) à la blessure
+sérieuse (5 à 7 semaines, joueur inapte). Elle survient à un point précis
+du match ; le joueur peut abandonner (score « ab. ») ou déclarer forfait
+au tour suivant. Jouer blessé l'aggrave ; une blessure aggravée peut
+devenir **chronique** (rechutes, poussées quand la fatigue monte). Le moral
+encaisse la blessure et remonte au retour. Avant chaque décision d'un
+joueur blessé ou très fatigué, le **staff médical** (un agent LLM) donne
+son avis : jouer, repos ou soins ; « soins » devient une option
+d'entraînement (guérison plus rapide, à l'infirmerie). Calibration sur 20
+saisons : 3,2 % de blessures et 1,1 % d'abandons par match.
+
 ## Le dispositif expérimental
 
 - 16 joueurs fictifs formant **8 paires de jumeaux** : même profil
@@ -151,10 +175,23 @@ résultats, vestiaires, presse ; l'événement le plus marquant est mis à la
 une, chaque ligne a un bouton « Voir » qui zoome sur le lieu, et la caméra
 peut suivre seule les temps forts. « Tous les joueurs » ouvre une grille
 triable de l'état de chaque agent ce jour-là (activité, lieu, jauges,
-sanctions, points). Survoler un personnage ou son nom affiche une
+sanctions, santé, points), à l'heure de la lecture : avant la fin de son
+match, un joueur garde son état du matin. « Tableau » montre le tableau du
+tournoi, des huitièmes au vainqueur ; les résultats et les qualifiés
+n'apparaissent qu'à l'heure où ils sont connus (un clic sur un match y
+emmène la caméra). Les blessés boitent, un kiné court sur le court quand
+un joueur se blesse, et des confettis tombent sur le central à la fin de
+la finale. Survoler un personnage ou son nom affiche une
 infobulle (rang, activité du jour, jauges) ; un clic ouvre sa fiche (courbe du moral et de la popularité, sanctions,
-relations aux vestiaires, décisions de la fédération). Le plan 2D reste
-disponible sur `/`.
+relations aux vestiaires, décisions de la fédération, santé et avis
+médical). Le plan 2D reste disponible sur `/`.
+
+**Interviews.** La fiche d'un joueur permet de lui poser une question :
+le LLM local répond dans sa peau, avec ce qu'il sait au jour affiché
+(résultats, moral, blessures, rien de ce qui suit). Il faut qu'Ollama
+tourne ; une seule interview à la fois. Les échanges sont ajoutés à
+`runs/<nom>/interviews.jsonl`, seule écriture du serveur. Pour essayer
+l'interface sans Ollama : `python -m tennis.direct --faux-interviews`.
 
 ## Robustesse face au LLM
 
@@ -178,8 +215,11 @@ tennis/
   run.py        point d'entrée
   dashboard.py  tableau de bord HTML
   social.py     moral, popularité, réputation, arbitres, sanctions
+  blessures.py  blessures, chroniques, hygiène de vie, soins
+  interview.py  interviews d'un joueur depuis la vue 3D
   direct.py     suivi en direct (serveur local + direct.html)
-  village3d*.js village 3D : décor, public, jour par jour, écran de contrôle, personnages
+  village3d*.js village 3D : décor, public, jour par jour, écran de contrôle, tableau,
+                interview, effets (kiné, confettis), personnages
 outils/         expérience multi-graines, téléchargement des données
 docs/           document de conception et journal des choix
 tests/          pytest (faux LLM : aucun appel réseau)

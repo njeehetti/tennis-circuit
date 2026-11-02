@@ -11,7 +11,8 @@ export const heureLib = f => {
 // Programmation : les courts annexes commencent tôt, le central en fin d'après-midi ;
 // un match dure à peu près selon son nombre de sets.
 const DEBUT_COURT = {r16a: 0.03, r16b: 0.08, sf: 0.14, qf: 0.22, central: 0.36};
-const nbSets = m => String(m.score || "").trim().split(/\s+/).filter(Boolean).length || 3;
+// sets joués (« 6-4 2-1 ab. » : deux sets, le second interrompu)
+const nbSets = m => String(m.score || "").split(/\s+/).filter(s => /\d-\d/.test(s)).length || 3;
 export function horaire(m) {
   const debut = DEBUT_COURT[m.court] ?? 0.2;
   return {debut, fin: Math.min(0.9, debut + 0.06 + nbSets(m) * 0.085)};
@@ -44,9 +45,41 @@ export function tempsForts(V, rang, nom) {
     else if (e.type === "sponsor") { x.heure = 0.25 + 0.1 * iSponsor++; x.interet = e.contrat ? 35 : 25; }
     else if (e.type === "presse") { x.heure = 0.96; x.interet = 40; }
     else if (e.type === "federation") { x.heure = 0.98; x.interet = 70; x.etiquette = "sanction"; }
+    else if (e.type === "blessure") {
+      const h = e.match ? horaire(e.match) : {debut: 0.3, fin: 0.5};
+      const n = e.match ? nbSets(e.match) : 3;
+      // abandon : juste avant le résultat ; sinon pendant le set concerné, ou à la fin du match
+      x.heure = e.abandon ? h.fin - 0.004 : e.set ? h.debut + (h.fin - h.debut) * Math.min(0.9, (e.set - 0.6) / n) : h.fin + 0.003;
+      x.interet = e.abandon ? 80 : (e.gravite === "sérieuse" || e.gravite === "modérée" ? 60 : 40) + (e.chronique ? 10 : 0);
+      x.etiquette = e.abandon ? "abandon" : "blessure";
+    } else if (e.type === "forfait") { x.heure = 0.04; x.interet = 65; x.etiquette = "forfait"; }
+    else if (e.type === "gueri") { x.heure = 0.97; x.interet = 30; x.etiquette = "retour"; }
+    else if (e.type === "poussee") { x.heure = 0.97; x.interet = 35; x.etiquette = "chronique"; }
     out.push(x);
   }
   return out.sort((a, b) => a.heure - b.heure);
+}
+
+// État d'un joueur à l'heure f de la lecture : avant la fin de son match du jour, on montre
+// l'état du matin (activité « en cours », jauges d'avant match) ; ensuite le résultat.
+export function auMoment(L, f) {
+  if (!L || !L.match || !L.avant) return L;
+  const {debut, fin} = horaire(L.match);
+  if (f >= fin) return {...L, activite: L.activiteApres || L.activite};
+  return {...L, ...L.avant, activite: L.avant.activite + (f >= debut ? " (en cours)" : ` (vers ${heureLib(debut)})`)};
+}
+
+// blessure en train d'être soignée sur un court : le kiné y est appelé
+export function soinsEnCours(liste, f) {
+  return liste.filter(x => x.type === "blessure" && x.match && x.heure <= f && f < x.heure + 0.05).pop() || null;
+}
+
+export function texteSante(s) {
+  if (!s) return "";
+  const parts = [];
+  if (s.blesse) parts.push(`${s.zone} (${s.gravite})`);
+  if (s.chroniques && s.chroniques.length) parts.push(`chronique : ${s.chroniques.join(", ")}`);
+  return parts.join(" ; ");
 }
 
 // « Entraînement » seul ne dit pas où : on précise service ou retour
@@ -84,7 +117,7 @@ export function creerControle({LIEUX, voir, REDUIT}) {
     const connus = liste.filter(x => x.heure <= f);
     $("horloge").textContent = enLecture ? heureLib(f) : "bilan";
     const sig = titre + "|" + connus.length;
-    if (sig === signature) return;
+    if (sig === signature) return false;
     const nouveaux = Math.max(0, connus.length - vus);
     signature = sig;
     $("journal-titre").textContent = titre;
@@ -107,10 +140,12 @@ export function creerControle({LIEUX, voir, REDUIT}) {
       if (cible && cible !== dernierAuto) { dernierAuto = cible; voir(cible.lieu, cible.qui, false); }
     }
     vus = connus.length;
+    return true;
   }
   return {
     nouvelleJournee(l) { liste = l; vus = 0; dernierAuto = null; signature = ""; },
     afficher,
+    liste: () => liste,
   };
 }
 
@@ -119,8 +154,10 @@ const COLONNES = [
   ["rang", "Rang", x => x.rang], ["nom", "Joueur", x => x.nom], ["pilote", "Pilote", x => x.pilote],
   ["activite", "Aujourd'hui", x => x.activite], ["lieu", "Où", x => x.lieuLib],
   ["moral", "Moral", x => x.moral], ["popularite", "Popul.", x => x.popularite], ["reputation", "Répu.", x => x.reputation],
-  ["fatigue", "Fatigue", x => x.fatigue], ["sanctions", "Sanct.", x => x.sanctions], ["points", "Points", x => x.points],
+  ["fatigue", "Fatigue", x => x.fatigue], ["sante", "Santé", x => x.santeTri], ["sanctions", "Sanct.", x => x.sanctions],
+  ["points", "Points", x => x.points],
 ];
+const GRAVITE_TRI = {"": 0, "gêne": 1, "légère": 2, "modérée": 3, "sérieuse": 4};
 export function creerGrille({LIEUX, voir}) {
   const $ = id => document.getElementById(id);
   let tri = {cle: "rang", sens: 1}, lignes = [];
@@ -149,6 +186,7 @@ export function creerGrille({LIEUX, voir}) {
         el("td", {}, el("span", {class: "badge" + (x.ia ? " ia" : "")}, x.pilote)),
         el("td", {class: "act"}, x.activite), el("td", {}, x.lieuLib),
         cellJauge(x.moral), cellJauge(x.popularite), cellJauge(x.reputation), cellJauge(x.fatigue, true, 10),
+        el("td", {class: "sante" + (x.blesse ? " blesse" : "")}, x.santeTxt || ""),
         el("td", {class: "num"}, x.sanctions || ""), el("td", {class: "num"}, x.points));
       const go = () => voir(x.lieu, x.id, true);
       tr.addEventListener("click", go);
@@ -158,13 +196,16 @@ export function creerGrille({LIEUX, voir}) {
     $("grille-table").replaceChildren(el("thead", {}, tete), el("tbody", {}, ...corps));
   }
   return {
-    mettreAJour(joueurs, V, rang, couleurCss, incidents) {
+    mettreAJour(joueurs, V, rang, couleurCss, incidents, moment = L => L) {
       lignes = joueurs.map(j => {
-        const L = V.lieux.get(j.id) || {};
+        const L = moment(V.lieux.get(j.id) || {}) || {};
+        const s = L.sante || {};
         return {id: j.id, rang: rang(j.id), nom: j.nom, ia: j.pilote === "llm", pilote: j.pilote === "llm" ? "IA" : "règle",
                 activite: L.activite || "", lieu: L.lieu, lieuLib: lieuNom(LIEUX, L.lieu),
                 moral: L.moral, popularite: L.popularite, reputation: L.reputation, fatigue: L.fatigue,
-                sanctions: incidents.filter(i => i.joueur === j.id).length, points: V.points[j.id] ?? 0, couleur: couleurCss(j)};
+                sanctions: incidents.filter(i => i.joueur === j.id).length, points: V.points[j.id] ?? 0, couleur: couleurCss(j),
+                blesse: !!s.blesse, santeTxt: texteSante(s),
+                santeTri: (GRAVITE_TRI[s.gravite] || 0) * 10 + (s.chroniques ? s.chroniques.length : 0)};
       });
       if (!$("grille").hidden) rendre();
     },

@@ -59,7 +59,7 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
 .bulle3d{max-width:270px;background:#fff;color:var(--encre);border:2px solid var(--tableau);border-radius:14px;padding:7px 11px;font-size:13.5px;line-height:1.4;box-shadow:0 10px 24px -12px rgba(0,0,0,.5)}
 .bulle3d b{display:block;font:600 15px "Barlow Condensed",sans-serif;color:var(--tableau-2)}
 /* fiche */
-#fiche{position:fixed;right:16px;top:226px;bottom:16px;width:350px;max-width:calc(100% - 32px);z-index:4;overflow-y:auto;background:var(--papier);border-radius:16px;border-top:12px solid var(--couleur,#0e3b2c);padding:0 16px 14px;font-size:14px;box-shadow:0 24px 54px -18px rgba(0,0,0,.6);transition:transform .35s cubic-bezier(.3,.7,.2,1)}
+#fiche{position:fixed;right:16px;top:226px;bottom:16px;width:350px;max-width:calc(100% - 32px);z-index:6;overflow-y:auto;background:var(--papier);border-radius:16px;border-top:12px solid var(--couleur,#0e3b2c);padding:0 16px 14px;font-size:14px;box-shadow:0 24px 54px -18px rgba(0,0,0,.6);transition:transform .35s cubic-bezier(.3,.7,.2,1)}
 #fiche[hidden]{display:block;transform:translateX(calc(100% + 40px));visibility:hidden}
 #fiche .fiche-tete{display:flex;justify-content:space-between;align-items:center;margin:10px 30px 2px 0;font-family:"Barlow Condensed",sans-serif}
 #fiche .pays{font-size:16px;font-weight:700;color:#5d6b64}
@@ -77,7 +77,7 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
 #fiche .kv span{color:#6a766f}#fiche .kv b{text-align:right;font-weight:600}
 #fiche blockquote{margin:8px 0 0;padding:8px 10px;background:#eef3ec;border-radius:10px;font-size:13.5px;line-height:1.45}
 #fiche blockquote span{display:block;font:600 14px "Barlow Condensed",sans-serif;color:var(--tableau-2)}
-#fiche .fermer,#grille .fermer{position:absolute;right:6px;top:8px;border:0;background:none;font-size:24px;line-height:1;color:#56635c;padding:2px 8px;cursor:pointer}
+#fiche .fermer,#grille .fermer,#tableau .fermer{position:absolute;right:6px;top:8px;border:0;background:none;font-size:24px;line-height:1;color:#56635c;padding:2px 8px;cursor:pointer}
 /* jours de la semaine */
 .jours{grid-column:1/-1;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
 .jours:empty{display:none}
@@ -102,6 +102,9 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
 #evenements li.vestiaire::before{background:#52b788}
 #evenements li.federation::before{background:#7b2cbf}
 #evenements li.presse::before,#evenements li.sponsor::before{background:#c9a646}
+#evenements li.blessure::before,#evenements li.forfait::before{background:#d62828;width:8px;height:8px;top:11px;left:-1px}
+#evenements li.gueri::before{background:#52b788}
+#evenements li.poussee::before{background:#f4a261}
 /* infobulle de survol */
 #infobulle{position:fixed;z-index:6;pointer-events:none;width:280px;background:var(--papier);border-radius:12px;border-top:6px solid var(--couleur,#0e3b2c);padding:8px 11px 9px;font-size:13px;line-height:1.4;box-shadow:0 16px 36px -14px rgba(0,0,0,.55)}
 #infobulle[hidden]{display:none}
@@ -180,6 +183,42 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
 #grille-table tbody tr:hover,#grille-table tbody tr:focus-visible{background:#eef6d0;outline:none}
 .pastille{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
 @media (prefers-reduced-motion: reduce){#evenements li.nouveau{animation:none}}
+/* tableau du tournoi */
+#tableau{position:fixed;left:362px;right:16px;bottom:16px;z-index:5;max-height:60%;display:flex;flex-direction:column;background:rgba(255,253,247,.97);border-radius:14px;box-shadow:0 22px 50px -20px rgba(0,0,0,.6);padding:10px 14px}
+#tableau[hidden]{display:none}
+#tableau-corps{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:10px;overflow:auto;margin-top:6px}
+.tb-col{display:flex;flex-direction:column;justify-content:space-around;gap:6px}
+.tb-col h3{margin:0 0 2px;font:700 15px "Barlow Condensed",sans-serif;color:var(--tableau)}
+.tb-match{all:unset;cursor:pointer;display:block;border-radius:8px;padding:5px 8px;background:#f4f1e6;border-left:4px solid #c9cfca;font-size:13px}
+.tb-match:hover,.tb-match:focus-visible{background:#eef6d0;outline:2px solid #2d8a5f}
+.tb-match.fini{border-left-color:#2e86ab}
+.tb-match.en-cours{border-left-color:#d9f24a;background:#fbfde9}
+.tb-match.aujourd-hui{border-left-color:#f4a261}
+.tb-match small{display:block;color:#6b7670;font-size:12px;margin-top:2px}
+.tb-j{display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-j .pastille{width:9px;height:9px;border-radius:50%;flex:none}
+.tb-j.gagne{font-weight:700}
+.tb-j.perd{color:#8a948e;text-decoration:line-through;text-decoration-color:rgba(0,0,0,.25)}
+.tb-coupe{font:700 20px "Barlow Condensed",sans-serif;color:var(--tableau);padding:8px;border-radius:10px;background:#fbf3d0;text-align:center}
+.tb-vide{color:#9aa5b1;margin:0}
+#grille-table td.sante{color:#6b7670;font-size:12.5px}
+#grille-table td.sante.blesse{color:#b42318;font-weight:600}
+#infobulle .act.sante{color:#b42318}
+/* interview dans la fiche */
+.interview textarea{width:100%;box-sizing:border-box;font:inherit;font-size:13.5px;border:1px solid #cfd6d1;border-radius:8px;padding:6px 8px;resize:vertical;margin-top:6px}
+.interview textarea:focus-visible{outline:2px solid #2d8a5f}
+.iv-liste{list-style:none;margin:0;padding:0}
+.iv-liste li{border-top:1px solid #e6e9e4;padding:6px 0}
+.iv-q{margin:0;font-weight:600}
+.iv-r{margin:2px 0;font-style:italic}
+.iv-humeur{font-style:normal;color:#6b7670}
+.iv-liste small{color:#8a948e}
+.iv-idees{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.iv-idee{all:unset;cursor:pointer;font-size:12px;padding:2px 8px;border-radius:999px;background:#e8ece9;color:#46524c}
+.iv-idee:hover,.iv-idee:focus-visible{background:#d9f24a;color:#0e3b2c}
+.iv-envoyer{margin-top:6px}
+.iv-etat{font-size:12.5px;color:#6b7670;min-height:1em}
+@media (max-width:720px){#tableau{max-height:70%;bottom:8px;left:8px;right:8px}#tableau-corps{grid-template-columns:repeat(5,140px)}}
 @media (max-width:720px){.vitesse input{width:70px}.vitesse output{min-width:0}#grille{max-height:70%;bottom:8px;left:8px;right:8px}}
 </style>
 <script type="importmap">
@@ -202,6 +241,7 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
     <button id="pause" type="button" aria-pressed="false">⏸ Pause</button>
     <button id="direct-btn" type="button" hidden>Revenir au direct</button>
     <button id="vue" type="button" class="discret">Vue d'ensemble</button>
+    <button id="tableau-btn" type="button" class="discret" aria-expanded="false" aria-controls="tableau">Tableau</button>
     <button id="grille-btn" type="button" class="discret" aria-expanded="false" aria-controls="grille">Tous les joueurs</button>
     <button id="noms" type="button" class="discret actif" aria-pressed="true">Noms</button>
     <a href="/" class="discret">Plan 2D</a>
@@ -223,6 +263,12 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
     <button id="grille-fermer" type="button" class="fermer" aria-label="Fermer la grille">×</button></div>
   <div class="grille-defile"><table id="grille-table"></table></div>
 </section>
+<section id="tableau" hidden aria-labelledby="tableau-titre">
+  <div class="grille-tete"><h2 id="tableau-titre">Tableau</h2>
+    <p>Les résultats apparaissent à l'heure de la lecture. Cliquer sur un match pour y aller.</p>
+    <button id="tableau-fermer" type="button" class="fermer" aria-label="Fermer le tableau">×</button></div>
+  <div id="tableau-corps"></div>
+</section>
 <div id="infobulle" hidden role="tooltip"></div>
 <aside id="fiche" hidden aria-live="polite"></aside>
 
@@ -230,7 +276,7 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
   <p><span class="point" id="point"></span><span id="statut">connexion…</span></p>
   <p id="info"></p>
 </div>
-<p class="aide">Survoler un personnage ou son nom pour le voir, cliquer pour sa fiche complète. Glisser pour tourner, molette pour zoomer, clic droit pour se déplacer. « Lecture » déroule le tournoi jour par jour, à la vitesse choisie ; « Voir » dans les temps forts zoome sur le lieu. Balle jaune : joueur piloté par l'IA ; même maillot : jumeaux ; carton : sanction de l'arbitre.</p>
+<p class="aide">Survoler un personnage ou son nom pour le voir, cliquer pour sa fiche complète. Glisser pour tourner, molette pour zoomer, clic droit pour se déplacer. « Lecture » déroule le tournoi jour par jour, à la vitesse choisie ; « Voir » dans les temps forts zoome sur le lieu. Balle jaune : joueur piloté par l'IA ; même maillot : jumeaux ; carton : sanction ; un joueur qui boite est blessé. La fiche d'un joueur permet de l'interviewer.</p>
 
 <div id="voile">Construction du village…<small>chargement de la 3D</small></div>
 

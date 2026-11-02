@@ -79,7 +79,7 @@ const J = Object.fromEntries(D.joueurs.map(j => [j.id, j]));
 const COUL = ["#2a7ab0","#c2582f","#3d9a5b","#8e5bb5","#c79a1e","#2e9c9a","#b8487c","#6b7a2a"];
 const SURF = {Hard:"dur", Clay:"terre battue", Grass:"gazon"};
 const TOURS = {R16:"8e de finale", QF:"quart", SF:"demie", F:"finale", V:"vainqueur"};
-const ENTR = {service:"service", retour:"retour", physique:"physique", repos:"repos"};
+const ENTR = {service:"service", retour:"retour", physique:"physique", repos:"repos", soins:"soins"};
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const nom = id => J[id] ? J[id].nom : id;
 const eur = n => new Intl.NumberFormat("fr-FR").format(n) + " €";

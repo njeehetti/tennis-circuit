@@ -293,3 +293,42 @@ accès en vue zoomée, et « une grille résumant l'état de tous les agents ».
   « Lecture » reprend au même moment.
 - **Survol** : les étiquettes de nom captent la souris (sauf masquées), et
   chaque figurine a une zone de survol invisible plus large qu'elle.
+
+### Blessures, staff médical, tableau et interviews (demande de Njee)
+
+Demande : « les joueurs jouent tout le temps, on pourrait rajouter le
+risque de blessure à gérer (dont les blessures chroniques) », effet sur le
+moral, tableau du tournoi et interviews. Puis : le risque dépend du style
+de jeu et des habitudes de vie.
+
+- **Où vit la blessure** : seulement dans la couche sociale. En mode sobre
+  (expérience scientifique), l'ancien tirage simple reste inchangé, pour ne
+  pas modifier les résultats déjà publiés.
+- **Pendant le match** : le moteur reçoit, avant le match, les blessures
+  tirées (joueur, point de survenue, malus service/retour, abandon). Le
+  tirage a son propre flux aléatoire (« -blessure ») : sans blessure, les
+  matchs restent identiques point pour point.
+- **Calibration** (20 saisons, faux LLM) : 3,2 % de blessures par match,
+  1,07 % d'abandons (ordre de grandeur du circuit réel, environ 1 %),
+  moral entre 35 et 80.
+- **Hygiène de vie** tirée par paire de jumeaux (poids 1/2/1) : le LLM et
+  la règle fixe d'une paire partent avec le même corps.
+- **Blessure sérieuse** : joueur inapte, il ne peut pas choisir de jouer.
+  Modérée : forfait une fois sur deux s'il se présente.
+- **Règle fixe** : blessée, elle choisit « soins » (règle équivalente à
+  l'option ajoutée au LLM).
+- **Score** : un set interrompu à 0-0 n'est pas écrit (« 3-6 6-3 ab. »).
+- **Tableau** : un qualifié n'apparaît qu'une fois son match du tour
+  précédent terminé à l'horloge ; les deux joueurs d'un match sont classés
+  par identifiant, pas par vainqueur, pour ne rien trahir.
+- **Interviews** : contexte limité à ce qui est connu au jour affiché, un
+  verrou (une interview à la fois, 429 sinon), question de 300 caractères
+  au plus, corps de requête de 4 Ko au plus, 503 si Ollama ne répond pas.
+- Non vérifié : l'affichage sur téléphone ; les interviews avec le vrai
+  qwen3:8b (testées avec le faux LLM).
+
+**Prochaines étapes proposées** (demande de Njee, non faites) : amitiés
+entre joueurs, temps consacré aux médias (réputation et moral), fans,
+intensité d'entraînement comme décision du joueur. Chacune change
+l'espace de décision du LLM ; la règle fixe devra recevoir une règle
+équivalente pour garder la comparaison équitable.

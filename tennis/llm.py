@@ -77,9 +77,13 @@ class FauxLLM:
         self.stats["appels"] += 1
         self.n += 1
         fatigue_haute = any(f"fatigue : {k}/10" in utilisateur for k in (7, 8, 9, 10))
+        # blessé : il se soigne une fois sur deux (si l'option existe), et joue quand même l'autre fois
+        blesse = "OUI, il te reste" in utilisateur
+        soigne = blesse and '"soins"' in utilisateur and self.n % 2 == 0
         reponses = {
-            "joueur": {"jouer": not fatigue_haute,
-                       "entrainement": "repos" if fatigue_haute else ("service", "retour", "physique")[self.n % 3],
+            "joueur": {"jouer": not fatigue_haute and not soigne,
+                       "entrainement": "soins" if soigne else "repos" if fatigue_haute
+                       else ("service", "retour", "physique")[self.n % 3],
                        "raisonnement": "Décision du faux LLM."},
             "entraineur": {"tactique": ("service_agressif", "pression_retour", "equilibre")[self.n % 3],
                            "conseil": "Reste concentré sur ton plan de jeu.", "recommande_jouer": True},
@@ -94,6 +98,9 @@ class FauxLLM:
             "vestiaire": {"replique_vainqueur": "Beau match.", "replique_perdant": "Bravo, à la prochaine.",
                           "ton": ("respect", "neutre", "tension")[self.n % 3]},
             "federation": {"decision": "amende", "montant": 5000, "communique": "Amende pour récidive."},
+            "medecin": {"avis": "soins" if "OUI, il te reste" in utilisateur or "blessure :" in utilisateur else "repos",
+                        "message": "Écoute ton corps : on ne joue pas une saison sur une semaine."},
+            "interview": {"reponse": "Je prends les matchs un par un, et je me sens prêt.", "humeur": "serein"},
         }
         if self.n % 17 == 0:          # simule un échec de temps en temps
             self.stats["echecs"] += 1

@@ -7,6 +7,8 @@ Le serveur ne fait que lire les fichiers que la simulation écrit déjà :
 `runs/<nom>/saison.json` (réécrit à chaque fin de semaine), `runs/<nom>/llm.jsonl`
 (une ligne par appel au LLM, en temps réel) et, s'il existe, `runs/<nom>.log`.
 Il ne touche jamais à la simulation : on peut l'ouvrir, le fermer, le relancer.
+Seule écriture : les interviews posées depuis le village 3D, ajoutées à
+`runs/<nom>/interviews.jsonl` (voir tennis/interview.py).
 """
 from __future__ import annotations
 
@@ -17,6 +19,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from . import interview
 from .donnees import RACINE
 
 DERNIERS_APPELS = 25
@@ -123,11 +126,41 @@ def dossier_le_plus_recent(racine: Path) -> Path:
 
 
 # Modules du village 3D servis tels quels (liste fermée : aucun chemin arbitraire).
-MODULES_3D = ("/village3d.js", "/village3d_jour.js", "/village3d_public.js", "/village3d_decor.js", "/village3d_controle.js")
+MODULES_3D = ("/village3d.js", "/village3d_jour.js", "/village3d_public.js", "/village3d_decor.js", "/village3d_controle.js", "/village3d_tableau.js", "/village3d_interview.js", "/village3d_effets.js")
+CORPS_MAX = 4096          # taille maximale d'une requête POST (une question d'interview)
 
 
-def creer_serveur(dossier: Path, port: int) -> ThreadingHTTPServer:
+def ollama_joignable(llm) -> bool:
+    """Ping rapide d'Ollama avant une interview (le faux LLM est toujours « joignable »)."""
+    url = getattr(llm, "url", None)
+    if not url:
+        return True
+    try:
+        import requests
+        return requests.get(f"{url}/api/tags", timeout=2).ok
+    except Exception:  # noqa: BLE001 (réseau, import : on répond simplement « indisponible »)
+        return False
+
+
+def _interviews(dossier: Path, joueur: str) -> list:
+    f = dossier / "interviews.jsonl"
+    if not f.exists():
+        return []
+    out = []
+    for ligne in f.read_text(encoding="utf-8").splitlines():
+        try:
+            x = json.loads(ligne)
+        except json.JSONDecodeError:
+            continue
+        if x.get("joueur") == joueur:
+            out.append(x)
+    return out[-20:]
+
+
+def creer_serveur(dossier: Path, port: int, llm_interview=None) -> ThreadingHTTPServer:
+    """`llm_interview` : client LLM des interviews (défaut : Ollama local, créé à la demande)."""
     cache: dict = {}
+    llm_box = {"llm": llm_interview}
     ici = Path(__file__).parent      # relus à chaque requête : on peut modifier la page à chaud
 
     class Gestionnaire(BaseHTTPRequestHandler):
@@ -152,11 +185,51 @@ def creer_serveur(dossier: Path, port: int) -> ThreadingHTTPServer:
             elif chemin == "/etat":
                 corps = json.dumps(etat(dossier, cache), ensure_ascii=False).encode("utf-8")
                 self._envoyer(200, corps, "application/json; charset=utf-8")
+            elif chemin == "/interviews":
+                jid = self.path.split("joueur=", 1)[1].split("&", 1)[0] if "joueur=" in self.path else ""
+                corps = json.dumps(_interviews(dossier, jid), ensure_ascii=False).encode("utf-8")
+                self._envoyer(200, corps, "application/json; charset=utf-8")
             elif chemin == "/tableau" and (dossier / "tableau_de_bord.html").exists():
                 self._envoyer(200, (dossier / "tableau_de_bord.html").read_bytes(),
                               "text/html; charset=utf-8")
             else:
                 self._envoyer(404, b"introuvable", "text/plain; charset=utf-8")
+
+        def do_POST(self):  # noqa: N802
+            if self.path.split("?", 1)[0] != "/interview":
+                self._envoyer(404, b"introuvable", "text/plain; charset=utf-8")
+                return
+            def erreur(code, message):
+                self._envoyer(code, json.dumps({"erreur": message}, ensure_ascii=False).encode("utf-8"),
+                              "application/json; charset=utf-8")
+            try:
+                n = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                n = -1
+            if not 0 < n <= CORPS_MAX:
+                erreur(413 if n > CORPS_MAX else 400, "requête vide ou trop longue")
+                return
+            try:
+                demande = json.loads(self.rfile.read(n).decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                erreur(400, "JSON invalide")
+                return
+            saison = etat(dossier, cache)["saison"]
+            if not saison:
+                erreur(409, "aucune saison lisible pour l'instant")
+                return
+            if llm_box["llm"] is None:
+                from .llm import ClientOllama
+                llm_box["llm"] = ClientOllama(timeout=90)
+            if not ollama_joignable(llm_box["llm"]):
+                erreur(503, "Ollama ne répond pas : lance-le (ollama serve) pour interviewer les joueurs")
+                return
+            try:
+                rep = interview.repondre(dossier, saison, demande, llm_box["llm"])
+            except interview.ErreurInterview as e:
+                erreur(e.code, str(e))
+                return
+            self._envoyer(200, json.dumps(rep, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
 
         def log_message(self, *args):   # pas de bruit dans le terminal
             pass
@@ -169,12 +242,18 @@ def main(argv=None) -> None:
     p = argparse.ArgumentParser(description="Suivi en direct d'une saison en cours.")
     p.add_argument("--nom", default=None, help="dossier dans runs/ (défaut : le plus récent)")
     p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--faux-interviews", action="store_true",
+                   help="interviews par le faux LLM (sans Ollama, pour essayer l'interface)")
     a = p.parse_args(argv)
     racine = RACINE / "runs"
     dossier = racine / a.nom if a.nom else dossier_le_plus_recent(racine)
     if not dossier.is_dir():
         raise SystemExit(f"Dossier introuvable : {dossier}")
-    serveur = creer_serveur(dossier, a.port)
+    llm = None
+    if a.faux_interviews:
+        from .llm import FauxLLM
+        llm = FauxLLM()
+    serveur = creer_serveur(dossier, a.port, llm)
     print(f"Suivi de {dossier.name} : http://127.0.0.1:{a.port}  (Ctrl+C pour arrêter)", flush=True)
     try:
         serveur.serve_forever()

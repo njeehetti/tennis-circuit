@@ -119,7 +119,10 @@ def test_village3d_servi(tmp_path):
         for module, fonction in (("village3d_jour.js", b"export function vueJour"),
                                  ("village3d_public.js", b"export function creerPublic"),
                                  ("village3d_decor.js", b"export function construireDecor"),
-                                 ("village3d_controle.js", b"export function tempsForts")):
+                                 ("village3d_controle.js", b"export function tempsForts"),
+                                 ("village3d_tableau.js", b"export function creerTableau"),
+                                 ("village3d_interview.js", b"export function blocInterview"),
+                                 ("village3d_effets.js", b"export function creerEffets")):
             assert fonction in urllib.request.urlopen(f"{base}/{module}").read()
     finally:
         serveur.shutdown()

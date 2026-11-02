@@ -7,7 +7,10 @@ import {CSS2DRenderer, CSS2DObject} from "three/addons/renderers/CSS2DRenderer.j
 import {JOURS, TOURS, jourNom, nomCourt, semainesFaites, vueJour, vueSemaine} from "/village3d_jour.js";
 import {NEUTRE, SURFACES, construireDecor} from "/village3d_decor.js";
 import {creerPublic} from "/village3d_public.js";
-import {creerControle, creerGrille, horaire, tempsForts} from "/village3d_controle.js";
+import {auMoment, creerControle, creerGrille, horaire, soinsEnCours, tempsForts, texteSante} from "/village3d_controle.js";
+import {creerTableau} from "/village3d_tableau.js";
+import {creerEffets} from "/village3d_effets.js";
+import {blocInterview} from "/village3d_interview.js";
 
 const REDUIT = matchMedia("(prefers-reduced-motion: reduce)").matches;
 // lecture : durée d'une journée, réglée par le curseur « Vitesse » (de 2 min à 6 s par jour)
@@ -84,6 +87,7 @@ function panneau(texte, role, x, y, z) {
 const D = construireDecor({THREE, scene, panneau});
 const {LIEUX, COMPETITION, mat} = D;
 const publique = creerPublic({THREE, scene, D, REDUIT, PEAUX});
+const effets = creerEffets({THREE, scene, LIEUX, REDUIT});
 // sorties des stades (par le tunnel) et des courts annexes (côté tribune)
 const SORTIES = {central: {x: 0, z: 19}, sf: {x: -84, z: 11}, qf: {x: 84, z: 11},
                  r16a: {x: -110, z: 41}, r16b: {x: -70, z: 41}, service: {x: 70, z: 41}, retour: {x: 110, z: 41}};
@@ -300,7 +304,7 @@ function marcher(p, dt, t) {
   if (p.delai > 0) { p.delai -= dt; return; }
   const but = p.chemin[0];
   if (but) {
-    const dx = but.x - p.pos.x, dz = but.z - p.pos.z, d = Math.hypot(dx, dz), v = p.vitesse * dt;
+    const dx = but.x - p.pos.x, dz = but.z - p.pos.z, d = Math.hypot(dx, dz), v = p.vitesse * dt * (p.boite ? 0.6 : 1);
     if (d <= v) { p.pos.set(but.x, but.y, but.z); p.chemin.shift(); }
     else {
       p.pos.x += dx / d * v; p.pos.z += dz / d * v; p.pos.y += (but.y - p.pos.y) * Math.min(1, dt * 6);
@@ -311,7 +315,9 @@ function marcher(p, dt, t) {
     p.jambes[0].rotation.x = a; p.jambes[1].rotation.x = -a;
     p.bras[0].rotation.x = -a * 0.8; if (!p.frappe) p.bras[1].rotation.x = a * 0.8;
     p.corps.position.y = Math.abs(Math.cos(p.phase)) * 0.08;
+    p.corps.rotation.z = p.boite ? Math.max(0, Math.sin(p.phase)) * 0.16 : 0;
   } else {
+    p.corps.rotation.z *= 0.8;
     tourner(p, p.face, dt * 5);
     for (const j of p.jambes) j.rotation.x *= 0.8;
     p.bras[0].rotation.x *= 0.8;
@@ -354,6 +360,9 @@ let vue = null, V = null, premier = true, selection = null;
 const lecture = {actif: false, suspendue: false, f: 0, duree: 30000};
 const nomDe = id => { const j = affiche?.saison?.joueurs.find(x => x.id === id); return j ? j.nom.split(" ").pop() : id; };
 const joueurDe = id => vue?.joueurs.find(x => x.id === id);
+// état d'un joueur à l'heure affichée : pendant la lecture, rien après l'horloge
+const heureVue = () => (lecture.actif || lecture.suspendue ? lecture.f : 1);
+const etatJ = id => auMoment(V.lieux.get(id), heureVue()) || {};
 const rangDe = id => vue ? [...vue.joueurs].sort((a, b) => (V.points[b.id] ?? 0) - (V.points[a.id] ?? 0)).findIndex(x => x.id === id) + 1 : 0;
 
 function decisionsEnDirect(e) {
@@ -379,7 +388,8 @@ function placerTout(e, immediat, direct) {
   for (const j of S.joueurs) {
     let lieu = V.semaine === 0 ? "vestiaires" : V.lieux.get(j.id).lieu;
     const dd = direct.get(j.id);
-    if (dd) lieu = dd.jouer === true ? "vestiaires" : (LIEUX[dd.entrainement] && !COMPETITION.includes(dd.entrainement) ? dd.entrainement : "repos");
+    if (dd) lieu = dd.jouer === true ? "vestiaires" : dd.entrainement === "soins" ? "infirmerie"
+      : (LIEUX[dd.entrainement] && !COMPETITION.includes(dd.entrainement) ? dd.entrainement : "repos");
     if (!parLieu.has(lieu)) parLieu.set(lieu, []);
     parLieu.get(lieu).push(j.id);
   }
@@ -472,15 +482,45 @@ function voir(lieu, qui, ouvrirFiche) {
 const controle = creerControle({LIEUX, voir, REDUIT});
 const grilleAgents = creerGrille({LIEUX, voir});
 const titreJour = () => (V.tournoi ? `Temps forts du ${jourNom(V.jour)}` : `Semaine ${V.semaine}, sans tournoi`);
+const tableau = creerTableau({nomDe, couleurDe: id => { const j = joueurDe(id); return j ? MAILLOTS_CSS[j.paire % 8] : "#ccc"; },
+                               voir: (court, qui) => voir(court, qui, true)});
+const couleurCss = j => MAILLOTS_CSS[j.paire % 8];
+function rendreSuivi() {
+  if (!vue || !V) return;
+  const f = heureVue();
+  grilleAgents.mettreAJour(vue.joueurs, V, rangDe, couleurCss, vue.incidents || [], L => auMoment(L, f));
+  if (!$("tableau").hidden) tableau.rendre(affiche.saison, V.semaine, V.jour || 7, f, V.tournoi);
+  for (const j of vue.joueurs) { const p = persos.get(j.id); if (p) p.boite = !!etatJ(j.id).blesse; }
+  effetsDuMoment(f);
+}
+// kiné et confettis : vérifiés à chaque image de la lecture (les fenêtres sont courtes)
+function effetsDuMoment(f) {
+  const soin = soinsEnCours(controle.liste(), f);
+  effets.soigner(soin ? soin.lieu : null, soin ? persos.get(soin.qui)?.pos : null);
+  const finale = V.tournoi && V.jour === 7 ? affiche.saison.matchs.find(m => m.semaine === V.semaine && m.tour === "F") : null;
+  if (finale && f >= horaire(finale).fin) effets.feter(`${V.semaine}-${finale.vainqueur}`);
+}
 function rendreControle() {
   const enCours = lecture.actif || lecture.suspendue;
-  controle.afficher(enCours ? lecture.f : 1, titreJour(), enCours, $("suivre").checked);
+  if (controle.afficher(enCours ? lecture.f : 1, titreJour(), enCours, $("suivre").checked)) rendreSuivi();
 }
+// « Tableau » et « Tous les joueurs » se partagent le bas de l'écran : un seul ouvert à la fois
+function basculer(nom, ouvrir) {
+  $(nom).hidden = !ouvrir;
+  $(nom + "-btn").setAttribute("aria-expanded", String(ouvrir));
+  $(nom + "-btn").classList.toggle("actif", ouvrir);
+}
+$("tableau-btn").addEventListener("click", () => {
+  const ouvrir = $("tableau").hidden;
+  if (ouvrir) basculer("grille", false);
+  basculer("tableau", ouvrir);
+  if (ouvrir) rendreSuivi();
+});
+$("tableau-fermer").addEventListener("click", () => basculer("tableau", false));
 $("grille-btn").addEventListener("click", () => {
   const ouvrir = $("grille").hidden;
-  $("grille").hidden = !ouvrir;
-  $("grille-btn").setAttribute("aria-expanded", String(ouvrir));
-  $("grille-btn").classList.toggle("actif", ouvrir);
+  if (ouvrir) basculer("tableau", false);
+  basculer("grille", ouvrir);
   if (ouvrir) grilleAgents.rendre();
 });
 $("grille-fermer").addEventListener("click", () => $("grille-btn").click());
@@ -516,7 +556,7 @@ function afficher(immediat = false) {
   if (!lecture.actif) heureDuJour(figee || e.termine ? 0.45 : Math.min(1, (e.semaine_courante || []).length / 23));
   controle.nouvelleJournee(tempsForts(V, rangDe, nomDe));
   rendreControle();
-  grilleAgents.mettreAJour(vue.joueurs, V, rangDe, j => MAILLOTS_CSS[j.paire % 8], vue.incidents || []);
+  rendreSuivi();
   infobulle.hidden = true;                       // son contenu décrivait le jour précédent
   if (enDirect) bulleEnDirect(e);
   if (selection) montrerFiche(selection, false);
@@ -641,11 +681,12 @@ function contenuInfobulle(id) {
   const p = persos.get(id);
   if (!p || !V) return null;
   if (p.type === "joueur") {
-    const j = joueurDe(id), L = V.lieux.get(id);
+    const j = joueurDe(id), L = etatJ(id), sante = texteSante(L.sante);
     return [MAILLOTS_CSS[j.paire % 8], [
       el("div", {class: "t"}, el("b", {class: "nom"}, j.nom), el("span", {class: "badge" + (j.pilote === "llm" ? " ia" : "")}, j.pilote === "llm" ? "IA" : "règle fixe")),
       el("div", {class: "act"}, `${rangDe(id)}e, ${V.points[id]} pts. ${majuscule(L.activite)}.`),
-      jauges(L), L.bulle ? el("q", {}, L.bulle.texte) : null]];
+      jauges(L), sante ? el("div", {class: "act sante"}, `Santé : ${sante}`) : null,
+      L.bulle && heureVue() >= 1 ? el("q", {}, L.bulle.texte) : null]];
   }
   if (p.type === "coach") {
     const j = joueurDe(id.slice(2)), d = vue.semaines[vue.semaines.length - 1]?.decisions.find(x => x.joueur === j.id);
@@ -655,7 +696,8 @@ function contenuInfobulle(id) {
   if (p.type === "arbitre") {
     const m = p.match;
     return ["#223a5e", [el("div", {class: "t"}, el("b", {class: "nom"}, m && m.arbitre ? m.arbitre : "Arbitre de chaise"), el("span", {class: "badge"}, "arbitre")),
-      m ? el("div", {class: "act"}, `${majuscule(TOURS[m.tour])}, ${nomCourt(m.court)} : ${nomDe(m.a)} bat ${nomDe(m.b)} ${m.score}.`) : null,
+      m ? el("div", {class: "act"}, heureVue() >= horaire(m).fin ? `${majuscule(TOURS[m.tour])}, ${nomCourt(m.court)} : ${nomDe(m.vainqueur)} bat ${nomDe(m.perdant)} ${m.score}.`
+        : `${majuscule(TOURS[m.tour])}, ${nomCourt(m.court)} : ${nomDe(m.a)} contre ${nomDe(m.b)}, en cours ou à venir.`) : null,
       m && m.sanctionsDuMatch.length ? el("q", {}, m.sanctionsDuMatch.map(x => `${x.sanction === "avertissement" ? "Avertissement" : "Point de pénalité"} à ${nomDe(x.joueur)} (${x.motif})`).join(" ; "))
         : el("div", {class: "act"}, "Aucune sanction dans ce match.")]];
   }
@@ -697,7 +739,7 @@ function courbe(S, id, k) {
   return svg;
 }
 function ficheJoueur(id) {
-  const S = vue, j = joueurDe(id), L = V.lieux.get(id), k = V.semaine;
+  const S = vue, j = joueurDe(id), L = etatJ(id), k = V.semaine;
   const jumeau = S.joueurs.find(x => x.paire === j.paire && x.id !== id);
   const lecons = j.memoire.filter(m => m.type === "reflexion");
   const d = S.semaines.find(w => w.semaine === k)?.decisions.find(x => x.joueur === id);
@@ -728,7 +770,12 @@ function ficheJoueur(id) {
     relations.size ? el("h4", {}, "Relations aux vestiaires") : null,
     relations.size ? el("ul", {class: "liste"}, ...[...relations].map(([adv, v]) => el("li", {},
       `${nomDe(adv)} : ${v.relation <= -0.3 ? "tendue" : v.relation >= 0.3 ? "respect" : "neutre"} (dernier échange ${v.ton}, S${v.semaine})`))) : null,
-    lecons.length ? citation("Dernière leçon", lecons[lecons.length - 1].texte.replace(/^Leçon : /, "")) : null]];
+    lecons.length ? citation("Dernière leçon", lecons[lecons.length - 1].texte.replace(/^Leçon : /, "")) : null,
+    social ? el("h4", {}, "Santé") : null,
+    social ? ligne("État", texteSante(L.sante) || "aucune blessure") : null,
+    j.hygiene ? ligne("Hygiène de vie", j.hygiene) : null,
+    d && d.medecin && d.medecin.avis ? citation("Staff médical", `Avis : ${d.medecin.avis}. ${d.medecin.message || ""}`) : null,
+    social ? blocInterview(j, k, V.jour || 1, nomDe(id)) : null]];
 }
 function ficheAutre(id) {
   const c = contenuInfobulle(id);
@@ -808,6 +855,7 @@ const horloge = new THREE.Clock();
 function boucle() {
   const dt = Math.min(0.05, horloge.getDelta()), t = horloge.elapsedTime;
   for (const p of persos.values()) marcher(p, dt, t);
+  effets.animer(dt, t);
   animerRallyes(dt);
   publique.animer(dt, t);
   if (!REDUIT) {
@@ -818,6 +866,7 @@ function boucle() {
     lecture.f = Math.min(1, lecture.f + dt * 1000 / lecture.duree);
     heureDuJour(0.1 + 0.8 * lecture.f);
     rendreControle();
+    if (V) effetsDuMoment(lecture.f);
     if (lecture.f >= 1) avancerLecture();
   }
   if (selection) {

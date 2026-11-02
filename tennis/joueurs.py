@@ -117,13 +117,14 @@ def force_effective(j: Joueur, e: Etat, surface: str, tactique: str, adv: Joueur
 
 
 def apres_match(e: Etat, gagne: bool, cinq_sets: bool, tactique: str,
-                rng: random.Random) -> tuple[Etat, bool]:
-    """Fatigue et risque de blessure après un match. Renvoie (état, nouvelle_blessure)."""
+                rng: random.Random, risque: bool = True) -> tuple[Etat, bool]:
+    """Fatigue et risque de blessure après un match. Renvoie (état, nouvelle_blessure).
+    risque=False : les blessures sont gérées par tennis/blessures.py (couche v3)."""
     charge = (1.5 if cinq_sets else 1.0) + (0.25 if tactique == "service_agressif" else 0.0)
     fatigue = min(10.0, e.fatigue + charge * (1 - e.endurance))
     nouvelle = False
     blessure = e.blessure
-    if blessure == 0 and rng.random() < max(0.0, fatigue - 6) * 0.03:
+    if risque and blessure == 0 and rng.random() < max(0.0, fatigue - 6) * 0.03:
         # 2 à 4 : la semaine en cours est décomptée en fin de semaine (1 à 3 semaines réelles)
         blessure, nouvelle = rng.randint(2, 4), True
     return replace(e, fatigue=fatigue, blessure=blessure, matchs=e.matchs + 1,

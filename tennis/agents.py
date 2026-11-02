@@ -12,8 +12,12 @@ import unicodedata
 from dataclasses import dataclass
 
 from .joueurs import ENTRAINEMENTS, TACTIQUES, RETOUR_MOYEN, SERVICE_MOYEN, Etat, Joueur
+from .blessures import REGLES_BLESSURES
 from .social import REGLES_SOCIALES
 from .tournoi import NOMS_SURFACES, Tournoi
+
+# couche v3 : « soins » (kiné, médecin) guérit plus vite ; proposé seulement avec la couche sociale
+ENTRAINEMENTS_V3 = ENTRAINEMENTS + ("soins",)
 
 SYSTEME = ("Tu joues un rôle dans une simulation de circuit de tennis fictif. "
            "Tous les personnages sont inventés. Réponds uniquement par un objet JSON valide, "
@@ -139,8 +143,9 @@ def decision_baseline(e: Etat, tournoi: Tournoi | None, semaine: int) -> Decisio
 
 def decision_joueur(llm, j: Joueur, e: Etat, semaine: int, tournoi: Tournoi | None,
                     a_venir: list, conseil: str, souvenirs: str, rang: int,
-                    version: int = 2, social: str = "") -> Decision:
-    """`social` : état social en texte (moral, popularité, réputation) ; vide en mode sobre."""
+                    version: int = 2, social: str = "", sante: str = "", medecin: str = "") -> Decision:
+    """`social` : état social en texte (moral, popularité, réputation) ; vide en mode sobre.
+    `sante` et `medecin` (couche v3) : état physique détaillé et avis du staff médical."""
     if tournoi:
         semaine_txt = (f"Cette semaine (semaine {semaine}) : {tournoi.nom}, catégorie {tournoi.categorie}, "
                        f"sur {NOMS_SURFACES[tournoi.surface]}, {tournoi.points('V')} points au vainqueur.")
@@ -154,19 +159,22 @@ def decision_joueur(llm, j: Joueur, e: Etat, semaine: int, tournoi: Tournoi | No
         f"Ton profil : {_profil_txt(j, tournoi.surface if tournoi else 'Hard')}.\n"
         f"Ton état : {_etat_txt(e)}.\n"
         + (f"Ton état mental et social : {social}.\n{REGLES_SOCIALES}\n" if social else "")
+        + (f"Ton état physique : {sante}.\n{REGLES_BLESSURES}\n" if sante else "")
+        + (f"Avis de ton staff médical : {medecin}\n" if medecin else "")
         + f"{REGLES[version]}\n\n{semaine_txt}\nProchains tournois : {suite}.\n"
         f"Conseil de ton entraîneur : {conseil or 'aucun cette semaine'}\n"
         f"Tes souvenirs importants :\n{souvenirs}\n\n"
         "Décide pour cette semaine. Réponds en JSON : "
         '{"jouer": true ou false (jouer le tournoi de la semaine, false s\'il n\'y en a pas), '
-        '"entrainement": "service" | "retour" | "physique" | "repos", '
+        + ('"entrainement": "service" | "retour" | "physique" | "repos" | "soins", ' if social else
+           '"entrainement": "service" | "retour" | "physique" | "repos", ') +
         '"raisonnement": "une ou deux phrases à la première personne"}'
     )
     rep = llm.json("joueur", SYSTEME, prompt, ("jouer", "entrainement", "raisonnement"), sujet=j.id)
     if rep is None:
         base = decision_baseline(e, tournoi, semaine)
         return Decision(base.jouer, base.entrainement, "(repli : réponse LLM invalide)", True)
-    entr, exact = choisir(rep.get("entrainement"), ENTRAINEMENTS, "repos")
+    entr, exact = choisir(rep.get("entrainement"), ENTRAINEMENTS_V3 if social else ENTRAINEMENTS, "repos")
     jouer = booleen(rep.get("jouer"), False) and tournoi is not None
     return Decision(jouer, entr, str(rep.get("raisonnement", ""))[:400], not exact)
 
@@ -369,3 +377,40 @@ def federation(llm, j: Joueur, incidents: list, reputation: float) -> dict:
     if dec == "amende" and montant == 0:
         dec = "rappel"
     return {"decision": dec, "montant": montant, "communique": str(rep["communique"])[:300]}
+
+
+AVIS_MEDICAUX = ("jouer", "repos", "soins")
+
+
+def avis_medical(llm, j: Joueur, e: Etat, sante: str, tournoi: Tournoi | None) -> dict:
+    """Le staff médical (médecin et kiné) donne son avis avant la décision du joueur."""
+    prompt = (
+        f"Tu es le médecin du circuit fictif, avec le kiné de {j.nom} ({j.age} ans). "
+        f"Fatigue : {e.fatigue:.0f}/10. État physique : {sante}.\n{REGLES_BLESSURES}\n"
+        + (f"Cette semaine : {tournoi.nom} ({tournoi.categorie}).\n" if tournoi else "Pas de tournoi cette semaine.\n")
+        + "Ta priorité est la santé du joueur sur toute la saison, pas le résultat de la semaine. "
+        'Réponds en JSON : {"avis": "jouer" | "repos" | "soins", "message": "une ou deux phrases '
+        'adressées au joueur"}'
+    )
+    rep = llm.json("medecin", SYSTEME, prompt, ("avis", "message"), sujet=j.id)
+    if rep is None:
+        avis = "soins" if e.blessure else "repos"
+        return {"avis": avis, "message": "", "repli": True}
+    avis, _ = choisir(rep.get("avis"), AVIS_MEDICAUX, "soins" if e.blessure else "repos")
+    return {"avis": avis, "message": str(rep.get("message", ""))[:300]}
+
+
+def interview(llm, j: Joueur, contexte: str, question: str) -> dict:
+    """Question libre posée depuis le village 3D : le joueur répond, dans son personnage."""
+    prompt = (
+        f"Tu es {j.nom}, joueur de tennis professionnel fictif ({j.personnalite}). "
+        f"Voici ce que tu sais de ta situation, au jour de l'interview (n'invente aucun fait au-delà) :\n"
+        f"{contexte}\n\nUn journaliste te pose cette question : « {question} »\n"
+        "Réponds comme le personnage, avec naturel, en trois phrases au plus. Si la question sort du "
+        "tennis ou de ta vie de joueur, recentre poliment. "
+        'Réponds en JSON : {"reponse": "ta réponse", "humeur": "un mot qui décrit ton ton"}'
+    )
+    rep = llm.json("interview", SYSTEME, prompt, ("reponse",), sujet=j.id)
+    if rep is None:
+        return {"reponse": "Désolé, je préfère ne pas répondre maintenant.", "humeur": "réservé", "repli": True}
+    return {"reponse": str(rep["reponse"])[:600], "humeur": str(rep.get("humeur", ""))[:40]}
