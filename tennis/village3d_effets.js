@@ -22,9 +22,10 @@ export function creerEffets({THREE, scene, LIEUX, REDUIT}) {
 
   // confettis : quelques centaines de petits carrés colorés, en un seul InstancedMesh
   const N = REDUIT ? 0 : 260;
-  const conf = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.35, 0.22),
+  const conf = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.5, 0.32),
     new THREE.MeshBasicMaterial({side: THREE.DoubleSide, vertexColors: false}), Math.max(1, N));
   conf.visible = false;
+  conf.frustumCulled = false;      // sa sphère englobante, calculée une fois, ne suit pas les confettis
   const couleurs = [0xd9f24a, 0xe4572e, 0x2e86ab, 0xf3a712, 0xffffff, 0x7b2cbf];
   const parts = [];
   const tmp = new THREE.Object3D(), col = new THREE.Color();
@@ -56,11 +57,13 @@ export function creerEffets({THREE, scene, LIEUX, REDUIT}) {
       confFini = cle;
       const c = centreCourt("central") || new THREE.Vector3();
       for (const x of parts) {
-        x.p.set(c.x + (Math.random() - 0.5) * 30, 26 + Math.random() * 12, c.z + (Math.random() - 0.5) * 18);
-        x.v.set((Math.random() - 0.5) * 2, -3 - Math.random() * 3, (Math.random() - 0.5) * 2);
+        // au-dessus du court, assez bas pour rester dans le champ de la caméra zoomée
+        x.p.set(c.x + (Math.random() - 0.5) * 34, 10 + Math.random() * 12, c.z + (Math.random() - 0.5) * 22);
+        x.v.set((Math.random() - 0.5) * 1.5, -1.6 - Math.random() * 1.8, (Math.random() - 0.5) * 1.5);
       }
       conf.visible = confActifs = true;
     },
+    rearmer() { confFini = ""; },
     reinitialiser() { confFini = ""; conf.visible = confActifs = false; kine.visible = false; cible = null; },
     animer(dt, t) {
       if (kine.visible && cible) {

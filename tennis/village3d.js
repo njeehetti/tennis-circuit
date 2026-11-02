@@ -48,6 +48,18 @@ try {
   throw e;
 }
 rendu.setPixelRatio(Math.min(devicePixelRatio, 2));
+// les panneaux se placent sous le bandeau, quelle que soit sa hauteur (écran, mise à l'échelle)
+const ajusterHaut = () => document.documentElement.style.setProperty("--haut",
+  Math.round(document.querySelector(".affichage").getBoundingClientRect().bottom + 10) + "px");
+new ResizeObserver(ajusterHaut).observe(document.querySelector(".affichage"));
+// pincer sur un pavé tactile (ou Ctrl + molette) agrandit toute la page sans la remettre en page :
+// le bandeau et les panneaux sortent de l'écran. Dans le village, ce geste zoome la caméra à la place.
+addEventListener("wheel", e => { if (e.ctrlKey) e.preventDefault(); }, {passive: false});
+{
+  const aide = document.querySelector(".aide");
+  try { aide.open = !localStorage.getItem("village3d.aide-vue"); localStorage.setItem("village3d.aide-vue", "1"); }
+  catch (e) { aide.open = true; }
+}
 rendu.setSize(innerWidth, innerHeight);
 rendu.shadowMap.enabled = true;
 rendu.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -499,7 +511,10 @@ function effetsDuMoment(f) {
   const soin = soinsEnCours(controle.liste(), f);
   effets.soigner(soin ? soin.lieu : null, soin ? persos.get(soin.qui)?.pos : null);
   const finale = V.tournoi && V.jour === 7 ? affiche.saison.matchs.find(m => m.semaine === V.semaine && m.tour === "F") : null;
-  if (finale && f >= horaire(finale).fin) effets.feter(`${V.semaine}-${finale.vainqueur}`);
+  if (!finale) return;
+  // avant la fin du match, on réarme : revoir la finale en lecture refait pleuvoir les confettis
+  if (f >= horaire({...finale, court: "central"}).fin) effets.feter(`${V.semaine}-${finale.vainqueur}`);
+  else effets.rearmer();
 }
 function rendreControle() {
   const enCours = lecture.actif || lecture.suspendue;

@@ -16,7 +16,7 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, t) =>
 const URL_ = args.url || "http://127.0.0.1:8765/";
 const SEMAINE = +(args.semaine || 6);
 const SORTIE = args.sortie || "frames";
-const LARGEUR = +(args.largeur || 1280), HAUTEUR = +(args.hauteur || 720);
+const LARGEUR = +(args.largeur || 1600), HAUTEUR = +(args.hauteur || 900);
 
 function playwright() {
   const require = createRequire(import.meta.url);
@@ -31,14 +31,17 @@ const attendre = ms => new Promise(r => setTimeout(r, ms));
 async function main() {
   mkdirSync(SORTIE, {recursive: true});
   const {chromium} = playwright();
-  const navigateur = await chromium.launch({headless: false, args: ["--window-position=0,0", "--hide-scrollbars"]});
-  const page = await navigateur.newPage({viewport: {width: LARGEUR, height: HAUTEUR}, deviceScaleFactor: 1});
+  // Chrome installé d'abord (pas de téléchargement), sinon le Chromium de Playwright
+  const options = {headless: false, args: ["--window-position=0,0", "--hide-scrollbars"]};
+  const navigateur = await chromium.launch({...options, channel: "chrome"}).catch(() => chromium.launch(options));
+  const page = await navigateur.newPage({viewport: {width: LARGEUR, height: HAUTEUR}, deviceScaleFactor: 1, reducedMotion: "no-preference"});
   const erreurs = [];
   page.on("pageerror", e => erreurs.push(String(e)));
   await page.goto(URL_);
   await page.waitForFunction(() => document.getElementById("voile")?.hidden || getComputedStyle(document.getElementById("voile")).display === "none"
     || document.querySelectorAll("#frise button").length > 0, null, {timeout: 60000});
   await attendre(2500);
+  console.log("animations réduites :", await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches));
   await page.addStyleTag({content: ".aide{display:none!important}"});
 
   // flux d'images du navigateur (CDP) : horodaté, sans ralentir le rendu comme des captures
@@ -50,33 +53,53 @@ async function main() {
     images.push({nom, t: f.metadata.timestamp});
     await cdp.send("Page.screencastFrameAck", {sessionId: f.sessionId}).catch(() => {});
   });
-  const clic = sel => page.click(sel);
-  const jour = async i => page.locator("#jours button").nth(i).click();
-  const semaine = async k => page.locator("#frise button").nth(k - 1).click();
+  // clics dans la page (pas d'attente d'« actionnabilité » : la 3D bouge sans cesse)
+  const clic = sel => page.evaluate(s => document.querySelector(s)?.click(), sel);
+  const jour = i => page.evaluate(n => document.querySelectorAll("#jours button")[n]?.click(), i);
+  const semaine = k => page.evaluate(n => document.querySelectorAll("#frise button")[n - 1]?.click(), k);
 
-  // 1. vue d'ensemble du complexe, la semaine choisie, au dimanche
+  // 1. le samedi de la semaine choisie, vue d'ensemble
   await semaine(SEMAINE); await attendre(400);
-  await jour(6); await attendre(800);
-  await cdp.send("Page.startScreencast", {format: "jpeg", quality: 85, maxWidth: LARGEUR, maxHeight: HAUTEUR, everyNthFrame: 1});
-  await attendre(3000);
-  // 2. la finale en lecture rapide, caméra qui suit les temps forts, tableau ouvert
+  await jour(5); await attendre(1200);
   await page.evaluate(() => {
     const v = document.getElementById("vitesse"); v.value = 5; v.dispatchEvent(new Event("input"));
     document.getElementById("suivre").checked = true;
   });
-  await jour(5); await attendre(300);        // samedi : les demies
+  await cdp.send("Page.startScreencast", {format: "jpeg", quality: 85, maxWidth: LARGEUR, maxHeight: HAUTEUR, everyNthFrame: 1});
+  await attendre(2000);
+  // 2. lecture : demies du samedi (grille de tous les agents), puis la finale du dimanche
+  const minutes = () => page.evaluate(() => {
+    const m = (document.getElementById("horloge").textContent || "").match(/(\d+) h (\d+)/);
+    return m ? +m[1] * 60 + +m[2] : -1;
+  });
+  const dimanche = () => page.evaluate(() => /dimanche/.test(document.getElementById("journal-titre").textContent));
+  async function attendreQue(test, maxMs) {
+    const fin = Date.now() + maxMs;
+    while (Date.now() < fin) { if (await test()) return true; await attendre(150); }
+    return false;
+  }
   await clic("#lecture");
-  await attendre(5000);
-  await clic("#tableau-btn");
-  await attendre(9000);                       // dimanche : finale, confettis
-  await clic("#tableau-btn");
+  await attendre(4000);
   await clic("#grille-btn");
   await attendre(3500);
   await clic("#grille-btn");
-  // 3. la fiche du vainqueur
+  await attendreQue(dimanche, 30000);
+  // le dimanche plus lentement : la finale dure quelques secondes à 12 s par jour
+  await page.evaluate(() => { const v = document.getElementById("vitesse"); v.value = 3; v.dispatchEvent(new Event("input")); });
+  await attendreQue(async () => (await minutes()) >= 13 * 60 + 45, 30000);
+  await attendre(3000);                      // la finale sur le central, caméra qui suit
+  await clic("#tableau-btn");                // le tableau se remplit à l'heure de la lecture
+  await attendreQue(() => page.evaluate(() => !!document.querySelector(".tb-coupe")), 30000);
+  await attendre(2500);
+  await clic("#tableau-btn");
+  await attendre(3500);                      // confettis sur le central
   await page.evaluate(() => document.querySelector("#lecture.actif") && document.getElementById("lecture").click());
-  await page.locator("#evenements li[data-qui]").first().click().catch(() => {});
-  await attendre(3500);
+  // 3. la fiche d'un joueur
+  await page.evaluate(() => document.querySelector("#lecture.actif") && document.getElementById("lecture").click());
+  await clic("#grille-btn"); await attendre(300);      // la ligne du n° 1 ouvre sa fiche
+  await page.evaluate(() => document.querySelector("#grille-table tbody tr")?.click());
+  await attendre(200); await clic("#grille-btn");
+  await attendre(4000);
   await cdp.send("Page.stopScreencast");
   await attendre(300);
   writeFileSync(join(SORTIE, "images.json"), JSON.stringify(images));

@@ -97,6 +97,20 @@ saisons : 3,2 % de blessures et 1,1 % d'abandons par match.
   semaine, tour, joueurs) : les décisions des autres joueurs ne décalent
   pas les tirages.
 
+### Premiers résultats (une saison par version, à confirmer)
+
+| Saison | Couche sociale | Écart moyen LLM − baseline | Paires où le LLM devance son jumeau |
+|---|---|---|---|
+| v2, graine 1 | non | +268 points (écart-type 655) | – |
+| v3, graine 2 | oui (moral, blessures, staff médical) | **+774 points** (écart-type 654) | 6 sur 8 |
+
+En v3, le jumeau LLM Tiago Quinlan gagne le Grand Chelem en battant en
+finale son propre jumeau à la règle fixe. Le LLM se repose et se soigne
+(20 semaines de repos, 15 de soins), alors qu'en v2 il ne se reposait
+jamais. Une saison ne suffit pas à conclure : avec un bruit de 328 points
+par saison, il faut une dizaine de graines (`outils/experience.py`).
+322 appels au LLM, aucun échec, 29 minutes sur une RTX 4070 portable.
+
 ## Modèle du monde
 
 - Point gagné au service : `p = service(surface) − (retour_adverse(surface) − retour_moyen)`, borné à [0,35 ; 0,90].
