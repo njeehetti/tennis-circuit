@@ -195,3 +195,34 @@ détente, salle de presse etc ». Skill utilisé : frontend-design.
   badge d'accréditation (statistiques en chiffres de tableau d'affichage).
 - Une seule animation : la balle qui traverse le court central entre les
   finalistes (coupée si « réduire les animations » est activé).
+
+### Village en 3D (demande de Njee)
+
+Question : « est ce que si je te donne accès à Unreal Engine… interface
+semblable à un jeu… navigateur ? ». Unreal ne tourne plus dans un
+navigateur (Pixel Streaming seulement) et serait trop lourd avec 8 Go de
+VRAM alors qu'Ollama l'occupe déjà. J'ai proposé Three.js ; réponse : « ok
+pour ton option 1, mais garde de côté l'interface que tu m'as déjà fait ».
+
+- Nouvelle page `/3d` (`tennis/village3d.html` et `village3d.js`). Le
+  plan 2D sur `/` est inchangé, avec juste un lien « Village en 3D » en plus.
+- [choix Claude] Three.js 0.160 par importmap depuis jsDelivr, sans étape
+  de build. Le plan 3D reprend exactement les rectangles du plan 2D
+  (1 px = 0,1 m), donc les deux vues restent cohérentes.
+- Décor low-poly : stade central en anneaux de gradins, arènes, courts
+  annexes grillagés, courts d'entraînement (lance-balles, panier),
+  bâtiments ouverts sur le dessus pour voir l'intérieur, piscine et
+  parasols. Textures de court dessinées en canvas et recolorées selon la
+  surface du tournoi.
+- Personnages en primitives : jumeaux de même maillot, balle jaune
+  flottante pour l'IA, anneau de fatigue au sol, coupe pour le vainqueur,
+  bandage si blessé. Ils marchent jusqu'à leur lieu en passant par la
+  grande allée ; échange de balle entre les finalistes.
+- Caméra orbitale ; un clic recentre la caméra et ouvre la fiche. Les noms
+  des entraîneurs n'apparaissent qu'au survol (sinon l'image est
+  illisible). En direct, le soleil avance au fil des décisions de la
+  semaine. « Réduire les animations » est respecté : téléportation, balle
+  fixe.
+- Vérifié dans Chrome sur `saison_v2_g1` : pas d'erreur dans la console,
+  la fiche s'ouvre au clic. Restent à vérifier : la bulle en direct (il
+  faut une saison qui tourne) et l'affichage sur téléphone.

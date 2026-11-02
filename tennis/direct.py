@@ -141,6 +141,10 @@ def creer_serveur(dossier: Path, port: int) -> ThreadingHTTPServer:
                 self._envoyer(200, (ici / "direct.html").read_bytes(), "text/html; charset=utf-8")
             elif chemin == "/scene.js":
                 self._envoyer(200, (ici / "scene.js").read_bytes(), "text/javascript; charset=utf-8")
+            elif chemin in ("/3d", "/3d/"):
+                self._envoyer(200, (ici / "village3d.html").read_bytes(), "text/html; charset=utf-8")
+            elif chemin == "/village3d.js":
+                self._envoyer(200, (ici / "village3d.js").read_bytes(), "text/javascript; charset=utf-8")
             elif chemin == "/etat":
                 corps = json.dumps(etat(dossier, cache), ensure_ascii=False).encode("utf-8")
                 self._envoyer(200, corps, "application/json; charset=utf-8")

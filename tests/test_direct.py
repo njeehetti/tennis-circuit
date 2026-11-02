@@ -105,3 +105,18 @@ def test_scene_servie(tmp_path):
         serveur.shutdown()
         serveur.server_close()
 
+
+def test_village3d_servi(tmp_path):
+    serveur = creer_serveur(tmp_path, 0)
+    threading.Thread(target=serveur.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{serveur.server_address[1]}"
+    try:
+        page = urllib.request.urlopen(base + "/3d").read().decode("utf-8")
+        assert "Village 3D du circuit" in page and "/village3d.js" in page
+        r = urllib.request.urlopen(base + "/village3d.js")
+        assert r.headers["Content-Type"].startswith("text/javascript")
+        assert b"function vueSemaine" in r.read()
+    finally:
+        serveur.shutdown()
+        serveur.server_close()
+

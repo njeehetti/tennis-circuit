@@ -107,6 +107,11 @@ décisions et raisonnements de la dernière semaine, articles. Le serveur ne
 fait que **lire** `llm.jsonl` et `saison.json` : on peut l'arrêter et le
 relancer sans gêner la simulation. Il n'écoute que sur `127.0.0.1`.
 
+Le même serveur sert aussi le **village en 3D** sur <http://127.0.0.1:8765/3d>
+(Three.js chargé depuis jsDelivr, il faut donc Internet et WebGL) : on
+tourne, zoome et se déplace dans le village, et un clic sur un personnage
+ouvre sa fiche. Le plan 2D reste disponible sur `/`.
+
 ## Robustesse face au LLM
 
 Leçons tirées d'un portage de *Generative Agents* sur petits modèles
