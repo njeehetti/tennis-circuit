@@ -4,3 +4,6 @@ __pycache__/
 data/raw/
 runs/
 *.log
+
+# notes personnelles, hors dépôt
+avancées_en_image/
