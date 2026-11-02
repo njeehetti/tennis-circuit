@@ -120,7 +120,7 @@ tournoi (le joueur tire une leçon écrite qui entre dans sa mémoire).
 
 - Python 3.12, bibliothèque standard + `requests` + `pytest`. Pas de
   pandas : les CSV sont petits.
-- Projet dans `C:\Users\njee2\Projets\Smallville\tennis-circuit` (et non
+- Projet dans `Projets\Smallville\tennis-circuit` (et non
   `Projets\tennis-circuit` comme annoncé) : dossier de travail de la
   session, pour éviter des demandes d'autorisation bloquantes pendant le
   travail autonome. Déplaçable tel quel.
