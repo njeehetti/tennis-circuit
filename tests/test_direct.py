@@ -115,7 +115,11 @@ def test_village3d_servi(tmp_path):
         assert "Village 3D du circuit" in page and "/village3d.js" in page
         r = urllib.request.urlopen(base + "/village3d.js")
         assert r.headers["Content-Type"].startswith("text/javascript")
-        assert b"function vueSemaine" in r.read()
+        assert b"function placerTout" in r.read()
+        for module, fonction in (("village3d_jour.js", b"export function vueJour"),
+                                 ("village3d_public.js", b"export function creerPublic"),
+                                 ("village3d_decor.js", b"export function construireDecor")):
+            assert fonction in urllib.request.urlopen(f"{base}/{module}").read()
     finally:
         serveur.shutdown()
         serveur.server_close()

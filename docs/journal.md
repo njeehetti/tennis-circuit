@@ -226,3 +226,44 @@ pour ton option 1, mais garde de côté l'interface que tu m'as déjà fait ».
 - Vérifié dans Chrome sur `saison_v2_g1` : pas d'erreur dans la console,
   la fiche s'ouvre au clic. Restent à vérifier : la bulle en direct (il
   faut une saison qui tourne) et l'affichage sur téléphone.
+
+## Couche sociale, jour par jour et scène réaliste (demandes de Njee, 2026-11-02)
+
+Demandes : jauge sociale et morale qui influence les performances
+(supporters, réputation, confiance selon les confrontations passées),
+fans et supporters dans le village, déroulé jour par jour d'un tournoi
+jusqu'à la finale, infobulles au survol, scène repensée « cohérente et
+réaliste ».
+
+Choix et raisons :
+
+- **Effet borné à ±2 points** de pourcentage sur le service (moral ±0,9,
+  face-à-face ±0,8, public ±0,6). Au-delà, le mental écrasait le talent
+  et les classements devenaient erratiques ; en dessous, l'effet était
+  invisible. L'ancien bonus de confiance de la v2 est retiré quand la
+  couche sociale est active, pour ne pas le compter deux fois.
+- **Rendements décroissants** sur le moral et retour hebdomadaire vers
+  55 (moral) et 50 (popularité) : sans eux, les leaders saturaient à 100
+  en quelques semaines. Mesuré : moral entre 38 et 75 sur 20 saisons.
+- **Taux d'incidents** calés sur un ordre de grandeur crédible pour le
+  circuit : environ 7 % des matchs avec un avertissement, un point de
+  pénalité très rare (0,15 %). Le tirage de l'arbitre utilise un flux
+  aléatoire séparé : la couche sociale ne décale pas les autres tirages.
+- **La presse ne reçoit que des faits** (incidents, froid aux
+  vestiaires, soutien du public) : en v2, le journaliste inventait des
+  rivalités dans 7 articles sur 9.
+- **Mode sobre** (`--sobre`, et défaut de `Saison`) : la v2 et
+  l'expérience restent reproductibles à l'identique.
+- **Jour par jour** : le moteur joue déjà les tours dans l'ordre ; on
+  date chaque match (R16 lundi-mardi, QF mercredi-jeudi, SF samedi,
+  finale dimanche), le vendredi est consacré aux médias et le dimanche à
+  la presse et, toutes les 4 semaines, à la fédération. L'affichage
+  reconstruit chaque journée depuis `saison.json` (`village3d_jour.js`),
+  sans rien ajouter côté simulation.
+- **Scène à l'échelle réelle** : dimensions officielles d'un court,
+  cuvettes de tribunes avec des sièges réels (instanciés pour rester
+  fluide), allées que les personnages suivent en sortant par le tunnel.
+  Le plan 3D est désormais indépendant du plan 2D (son propre décor,
+  `village3d_decor.js`). Le temps est compressé : un trajet prend environ
+  3 s quelle que soit la distance.
+- Non vérifié : l'affichage sur téléphone de la vue 3D.

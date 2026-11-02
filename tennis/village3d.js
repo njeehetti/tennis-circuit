@@ -1,9 +1,16 @@
-// Village du circuit en 3D (Three.js). Lit /etat comme le plan 2D, n'écrit rien.
+// Village du circuit en 3D (Three.js), à l'échelle réelle. Lit /etat comme le plan 2D, n'écrit rien.
+// Modules : village3d_decor.js (le complexe), village3d_public.js (spectateurs, fans, écrans),
+// village3d_jour.js (qui est où, jour par jour). Ce fichier : personnages, interface, lecture.
 import * as THREE from "three";
 import {OrbitControls} from "three/addons/controls/OrbitControls.js";
 import {CSS2DRenderer, CSS2DObject} from "three/addons/renderers/CSS2DRenderer.js";
+import {JOURS, TOURS, jourNom, nomCourt, semainesFaites, vueJour, vueSemaine} from "/village3d_jour.js";
+import {NEUTRE, SURFACES, construireDecor} from "/village3d_decor.js";
+import {creerPublic} from "/village3d_public.js";
 
 const REDUIT = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const DUREE_JOUR = 5000;            // lecture : 5 s par jour
+const TAILLE = 0.62;                // figurines : ~1,83 m
 const $ = id => document.getElementById(id);
 function el(tag, attrs, ...enfants) {            // texte via textContent : pas d'injection
   const n = document.createElement(tag);
@@ -15,48 +22,14 @@ function el(tag, attrs, ...enfants) {            // texte via textContent : pas 
 }
 const signe = x => (x > 0 ? "+" : "") + Math.round(x);
 const hachage = t => { let h = 0; for (const c of t) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+const majuscule = t => t.charAt(0).toUpperCase() + t.slice(1);
 const ROLES = {joueur: "Joueur", entraineur: "Entraîneur", reflexion: "Réflexion", journaliste: "Journaliste",
-               conference: "Conférence de presse", agent: "Agent sportif", sponsor: "Sponsor"};
-const TOURS = {V: "titre", F: "finale", SF: "demi-finale", QF: "quart de finale", R16: "premier tour"};
-const SURFACES = {Hard: {nom: "dur", c: 0x2f6cb0, bord: 0x255a95}, Clay: {nom: "terre battue", c: 0xc4663f, bord: 0xa9532f},
-                  Grass: {nom: "gazon", c: 0x5d9b47, bord: 0x4c843a}};
-const SANS_TOURNOI = {c: 0x7d977a, bord: 0x6c8569};
+               conference: "Conférence de presse", agent: "Agent sportif", sponsor: "Sponsor",
+               incident: "Incident", vestiaire: "Vestiaires", federation: "Fédération"};
 const MAILLOTS = [0xe4572e, 0x2e86ab, 0xf3a712, 0x7b2cbf, 0x1b998b, 0xd1495b, 0x3a86ff, 0x8c6d46];
 const MAILLOTS_CSS = ["#e4572e", "#2e86ab", "#f3a712", "#7b2cbf", "#1b998b", "#d1495b", "#3a86ff", "#8c6d46"];
 const PEAUX = [0xf3d2b3, 0xdcaa80, 0xad7a52, 0x7b5236];
 const CHEVEUX = [0x2b1b12, 0x5a3a22, 0xc9a15a, 0x1f1f1f, 0x8a4b2a];
-
-// ------------------------------------------------------------------ plan (mêmes lieux que le plan 2D)
-const K = 0.1, wx = x => (x - 800) * K, wz = y => (y - 570) * K;
-const LIEUX = {
-  central:    {type: "stade", r: [470, 40, 660, 500], court: [612, 188, 376, 196], titre: "Stade central", role: "finale"},
-  sf:         {type: "arene", r: [60, 60, 360, 225], court: [92, 113, 296, 120], titre: "Court 1", role: "demi-finales"},
-  qf:         {type: "arene", r: [60, 310, 360, 225], court: [92, 363, 296, 120], titre: "Court 2", role: "quarts de finale"},
-  r16a:       {type: "annexe", r: [1180, 60, 360, 225], court: [1205, 92, 310, 160], titre: "Court 3", role: "premier tour"},
-  r16b:       {type: "annexe", r: [1180, 310, 360, 225], court: [1205, 342, 310, 160], titre: "Court 4", role: "premier tour"},
-  vestiaires: {type: "batiment", sol: "vestiaires", r: [60, 630, 270, 262], titre: "Vestiaires", role: "inscrits de la semaine"},
-  service:    {type: "entrainement", r: [350, 630, 315, 262], court: [368, 660, 279, 214], titre: "Entraînement", role: "service"},
-  retour:     {type: "entrainement", r: [680, 630, 315, 262], court: [698, 660, 279, 214], titre: "Entraînement", role: "retour"},
-  physique:   {type: "batiment", sol: "gym", r: [1015, 630, 255, 262], titre: "Salle de sport"},
-  infirmerie: {type: "batiment", sol: "infirmerie", r: [1290, 630, 250, 262], titre: "Infirmerie"},
-  repos:      {type: "detente", r: [60, 915, 605, 200], titre: "Espace détente", role: "repos"},
-  presse:     {type: "batiment", sol: "presse", r: [680, 915, 380, 200], titre: "Salle de presse"},
-  sponsors:   {type: "batiment", sol: "sponsors", r: [1075, 915, 465, 200], titre: "Salon des sponsors"},
-};
-const COMPETITION = ["central", "sf", "qf", "r16a", "r16b"];
-const TOUR_LIEU = {V: "central", F: "central", SF: "sf", QF: "qf"};
-const ALLEE_Z = wz(586);
-function rect([x, y, w, h], marge = 0) {
-  return {x: wx(x + marge), z: wz(y + marge), w: (w - 2 * marge) * K, d: (h - 2 * marge) * K,
-          cx: wx(x + w / 2), cz: wz(y + h / 2)};
-}
-for (const L of Object.values(LIEUX)) {
-  L.R = rect(L.r);
-  if (L.court) L.C = rect(L.court);
-  if (L.type === "detente") L.aire = {x: L.R.x + 28, z: L.R.z + 5, w: L.R.w - 30, d: L.R.d - 7};
-  else if (L.C) L.aire = {x: L.C.x + 1.5, z: L.C.z + 2, w: L.C.w - 3, d: L.C.d - 3};
-  else L.aire = {x: L.R.x + 2, z: L.R.z + 6, w: L.R.w - 4, d: L.R.d - 7.5};
-}
 
 // ------------------------------------------------------------------ moteur
 const conteneur = $("monde");
@@ -80,49 +53,25 @@ etiquettes.setSize(innerWidth, innerHeight);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xa9d8ee);
-scene.fog = new THREE.Fog(0xa9d8ee, 190, 420);
-const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.5, 900);
-const VUE = {pos: new THREE.Vector3(14, 128, 122), cible: new THREE.Vector3(0, 0, -6)};
+scene.fog = new THREE.Fog(0xa9d8ee, 380, 900);
+const camera = new THREE.PerspectiveCamera(36, innerWidth / innerHeight, 0.3, 1400);
+const VUE = {pos: new THREE.Vector3(0, 205, 205), cible: new THREE.Vector3(0, 0, 4)};
 camera.position.copy(VUE.pos);
 const controles = new OrbitControls(camera, rendu.domElement);
 controles.target.copy(VUE.cible);
-controles.enableDamping = true;
-controles.dampingFactor = 0.08;
-controles.minDistance = 18;
-controles.maxDistance = 260;
-controles.maxPolarAngle = Math.PI * 0.45;
-controles.screenSpacePanning = false;
+Object.assign(controles, {enableDamping: true, dampingFactor: 0.08, minDistance: 5, maxDistance: 520,
+                          maxPolarAngle: Math.PI * 0.46, screenSpacePanning: false});
 
-const ciel = new THREE.HemisphereLight(0xe2f3ff, 0x5f7f3c, 1.25);
-scene.add(ciel);
-const soleil = new THREE.DirectionalLight(0xfff1d6, 2.6);
+scene.add(new THREE.HemisphereLight(0xe2f3ff, 0x5f7f3c, 1.2));
+const soleil = new THREE.DirectionalLight(0xfff1d6, 2.7);
 soleil.castShadow = true;
-soleil.shadow.mapSize.set(2048, 2048);
-Object.assign(soleil.shadow.camera, {left: -115, right: 115, top: 95, bottom: -95, near: 10, far: 400});
-soleil.shadow.bias = -0.0006;
+soleil.shadow.mapSize.set(4096, 4096);
+Object.assign(soleil.shadow.camera, {left: -160, right: 160, top: 130, bottom: -130, near: 10, far: 700});
+soleil.shadow.bias = -0.0004;
+soleil.shadow.normalBias = 0.04;
+soleil.target.position.set(0, 0, 5);
 scene.add(soleil, soleil.target);
 
-// ------------------------------------------------------------------ matières et formes partagées
-const matieres = new Map();
-function mat(couleur, opts = {}) {
-  const cle = couleur + JSON.stringify(opts);
-  if (!matieres.has(cle)) matieres.set(cle, new THREE.MeshStandardMaterial({color: couleur, roughness: 0.85, flatShading: true, ...opts}));
-  return matieres.get(cle);
-}
-function boite(w, h, d, couleur, x, y, z, parent, ombre = true) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), typeof couleur === "number" ? mat(couleur) : couleur);
-  m.position.set(x, y, z);
-  m.castShadow = ombre; m.receiveShadow = true;
-  parent.add(m);
-  return m;
-}
-function cylindre(rh, rb, h, couleur, x, y, z, parent, seg = 12) {
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(rh, rb, h, seg), typeof couleur === "number" ? mat(couleur) : couleur);
-  m.position.set(x, y, z);
-  m.castShadow = true; m.receiveShadow = true;
-  parent.add(m);
-  return m;
-}
 function panneau(texte, role, x, y, z) {
   const d = el("div", {class: "panneau3d"}, texte, role ? el("span", {}, role) : null);
   const o = new CSS2DObject(d);
@@ -130,284 +79,24 @@ function panneau(texte, role, x, y, z) {
   scene.add(o);
   return d;
 }
-
-// ------------------------------------------------------------------ courts (texture dessinée)
-const courtsCompetition = [];
-function texteCourt(couleur, w, d) {
-  const toile = document.createElement("canvas");
-  toile.width = 1024; toile.height = Math.round(1024 * d / w);
-  const tex = new THREE.CanvasTexture(toile);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
-  const dessiner = c => {
-    const g = toile.getContext("2d"), W = toile.width, H = toile.height;
-    g.fillStyle = "#" + c.toString(16).padStart(6, "0");
-    g.fillRect(0, 0, W, H);
-    g.strokeStyle = "#ffffff"; g.lineWidth = Math.max(4, W / 160);
-    const m = W * 0.05, mh = H * 0.08, sd = (H - 2 * mh) * 0.125;
-    g.strokeRect(m, mh, W - 2 * m, H - 2 * mh);
-    g.beginPath();
-    g.moveTo(m, mh + sd); g.lineTo(W - m, mh + sd);
-    g.moveTo(m, H - mh - sd); g.lineTo(W - m, H - mh - sd);
-    g.moveTo(W * 0.28, mh + sd); g.lineTo(W * 0.28, H - mh - sd);
-    g.moveTo(W * 0.72, mh + sd); g.lineTo(W * 0.72, H - mh - sd);
-    g.moveTo(W * 0.28, H / 2); g.lineTo(W * 0.72, H / 2);
-    g.moveTo(m, H / 2); g.lineTo(m + W * 0.012, H / 2);
-    g.moveTo(W - m, H / 2); g.lineTo(W - m - W * 0.012, H / 2);
-    g.stroke();
-    tex.needsUpdate = true;
-  };
-  dessiner(couleur);
-  return {tex, dessiner};
-}
-
-function court(C, parent, fixe) {
-  const t = texteCourt(fixe ? 0x2f6cb0 : SANS_TOURNOI.c, C.w, C.d);
-  const sol = new THREE.Mesh(new THREE.PlaneGeometry(C.w, C.d), new THREE.MeshStandardMaterial({map: t.tex, roughness: 0.9}));
-  sol.rotation.x = -Math.PI / 2;
-  sol.position.set(C.cx, 0.12, C.cz);
-  sol.receiveShadow = true;
-  parent.add(sol);
-  if (!fixe) courtsCompetition.push(t);
-  // filet
-  const filet = boite(0.12, 0.9, C.d * 0.9, new THREE.MeshStandardMaterial({color: 0x1d1d1d, transparent: true, opacity: 0.55}), C.cx, 0.57, C.cz, parent);
-  filet.castShadow = false;
-  boite(0.16, 0.12, C.d * 0.9, 0xffffff, C.cx, 1.04, C.cz, parent);
-  cylindre(0.12, 0.12, 1.1, 0x333333, C.cx, 0.6, C.cz - C.d * 0.46, parent, 8);
-  cylindre(0.12, 0.12, 1.1, 0x333333, C.cx, 0.6, C.cz + C.d * 0.46, parent, 8);
-}
-
-const abords = [];   // surfaces autour des courts, teintées selon la surface du tournoi
-function abord(w, d, x, z, parent) {
-  const m = boite(w, 0.1, d, new THREE.MeshStandardMaterial({color: SANS_TOURNOI.bord, roughness: 0.95}), x, 0.06, z, parent, false);
-  abords.push(m.material);
-  return m;
-}
-
-// ------------------------------------------------------------------ décor
-function arbre(x, z, s = 1) {
-  const g = new THREE.Group();
-  cylindre(0.35 * s, 0.5 * s, 2.6 * s, 0x7a5232, 0, 1.3 * s, 0, g, 6);
-  const f1 = new THREE.Mesh(new THREE.IcosahedronGeometry(2.4 * s, 0), mat(0x3f7a37));
-  f1.position.y = 3.8 * s; f1.castShadow = true;
-  const f2 = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6 * s, 0), mat(0x5a9c48));
-  f2.position.set(0.6 * s, 5.2 * s, 0.4 * s); f2.castShadow = true;
-  g.add(f1, f2);
-  g.position.set(x, 0, z);
-  g.rotation.y = hachage(`${x}${z}`) % 6;
-  scene.add(g);
-}
-
-function sol() {
-  const toile = document.createElement("canvas");
-  toile.width = 64; toile.height = 64;
-  const g = toile.getContext("2d");
-  g.fillStyle = "#8cbf5b"; g.fillRect(0, 0, 64, 32);
-  g.fillStyle = "#82b552"; g.fillRect(0, 32, 64, 32);
-  const tex = new THREE.CanvasTexture(toile);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(1, 60);
-  tex.magFilter = THREE.NearestFilter;
-  const p = new THREE.Mesh(new THREE.PlaneGeometry(520, 420), new THREE.MeshStandardMaterial({map: tex, roughness: 1}));
-  p.rotation.x = -Math.PI / 2;
-  p.receiveShadow = true;
-  scene.add(p);
-  // allées
-  const sable = 0xe9dcb5;
-  boite(156, 0.08, 4.6, sable, 0, 0.04, ALLEE_Z, scene, false);
-  boite(3, 0.08, 51, sable, wx(35), 0.04, wz(860), scene, false);
-  [[240, 548], [1370, 548], [800, 548], [510, 618], [1160, 618], [1520, 618], [382, 905], [870, 905]].forEach(([x, y]) =>
-    boite(4, 0.08, 3.4, sable, wx(x), 0.04, wz(y), scene, false));
-}
-
-function stade(L) {
-  const g = new THREE.Group(), cx = L.R.cx, cz = wz(290);
-  const anneaux = [[26, 17], [29, 19.5], [32, 22], [35, 24.5], [37.5, 26.5]];
-  const couleurs = [0x3d5468, 0x557089, 0x4a6379, 0x557089];
-  for (let i = 0; i < 4; i++) {
-    const [ri, rzi] = anneaux[i], [ro, rzo] = anneaux[i + 1];
-    const forme = new THREE.Shape(); forme.absellipse(0, 0, ro, rzo, 0, Math.PI * 2);
-    const trou = new THREE.Path(); trou.absellipse(0, 0, ri, rzi, 0, Math.PI * 2, true);
-    forme.holes.push(trou);
-    const geo = new THREE.ExtrudeGeometry(forme, {depth: 1.4 + i * 1.5, bevelEnabled: false, curveSegments: 48});
-    geo.rotateX(-Math.PI / 2);
-    const m = new THREE.Mesh(geo, mat(couleurs[i]));
-    m.position.set(cx, 0, cz);
-    m.castShadow = true; m.receiveShadow = true;
-    g.add(m);
-  }
-  // fond intérieur teinté et court
-  const fond = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshStandardMaterial({color: SANS_TOURNOI.bord, roughness: 0.95}));
-  fond.scale.set(26, 17, 1); fond.rotation.x = -Math.PI / 2; fond.position.set(cx, 0.08, cz);
-  fond.receiveShadow = true;
-  abords.push(fond.material);
-  g.add(fond);
-  court(L.C, g, false);
-  // mâts d'éclairage
-  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
-    const x = cx + sx * 31, z = cz + sz * 21;
-    cylindre(0.35, 0.5, 18, 0x9aa3ad, x, 9, z, g, 8);
-    boite(3.2, 1.8, 0.5, new THREE.MeshStandardMaterial({color: 0xfffbe6, emissive: 0xfff3c0, emissiveIntensity: 0.9}), x, 18.4, z, g);
-  });
-  // drapeaux sur l'anneau nord
-  for (let i = 0; i < 7; i++) {
-    const a = Math.PI * (1.15 + i * 0.117), x = cx + Math.cos(a) * 37, z = cz + Math.sin(a) * 26.5;
-    cylindre(0.08, 0.08, 5, 0xdddddd, x, 8.3, z, g, 6);
-    const d = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.3), new THREE.MeshStandardMaterial({color: MAILLOTS[i], side: THREE.DoubleSide}));
-    d.position.set(x + 1.1, 10.1, z);
-    d.castShadow = true;
-    drapeaux.push(d);
-    g.add(d);
-  }
-  // tunnel d'entrée
-  boite(6, 3.2, 4, 0x2c3e50, cx, 1.6, cz + 26, g);
-  scene.add(g);
-  L.panneau = panneau(L.titre, L.role, cx, 7.5, cz + 23.5);
-}
-const drapeaux = [];
-
-function arene(L) {
-  const g = new THREE.Group(), R = L.R, C = L.C;
-  abord(R.w - 1, R.d - 9, R.cx, R.cz, g);
-  for (let i = 0; i < 3; i++) {              // gradins nord et sud
-    boite(R.w, 1 + i * 1.1, 1.6, i % 2 ? 0x557089 : 0x4a6379, R.cx, (1 + i * 1.1) / 2, R.z + 0.8 + (2 - i) * 1.6, g);
-    boite(R.w, 1 + i * 1.1, 1.6, i % 2 ? 0x557089 : 0x4a6379, R.cx, (1 + i * 1.1) / 2, R.z + R.d - 0.8 - (2 - i) * 1.6, g);
-  }
-  court(C, g, false);
-  scene.add(g);
-  L.panneau = panneau(L.titre, L.role, R.cx, 6.2, R.z);
-}
-
-function grillage(R, g) {
-  const m = new THREE.MeshStandardMaterial({color: 0x1e4d34, transparent: true, opacity: 0.8, roughness: 1});
-  boite(R.w, 2.4, 0.15, m, R.cx, 1.2, R.z, g);
-  boite(R.w, 2.4, 0.15, m, R.cx, 1.2, R.z + R.d, g);
-  boite(0.15, 2.4, R.d, m, R.x, 1.2, R.cz, g);
-  boite(0.15, 2.4, R.d, m, R.x + R.w, 1.2, R.cz, g);
-}
-
-function annexe(L, fixe) {
-  const g = new THREE.Group(), R = L.R;
-  if (fixe) boite(R.w - 1, 0.1, R.d - 1, 0x255a95, R.cx, 0.06, R.cz, g, false);
-  else abord(R.w - 1, R.d - 1, R.cx, R.cz, g);
-  court(L.C, g, fixe);
-  grillage({x: R.x + 0.5, z: R.z + 0.5, w: R.w - 1, d: R.d - 1, cx: R.cx, cz: R.cz}, g);
-  boite(4.4, 0.5, 0.9, 0x8a6a48, R.cx, 0.6, R.z + R.d - 1.5, g);
-  scene.add(g);
-  L.panneau = panneau(L.titre, L.role, R.x + 6, 4.2, R.z + 0.5);
-  return g;
-}
-
-function entrainement(L) {
-  const g = annexe(L, true), C = L.C;
-  if (L.role === "service") {
-    cylindre(0.9, 0.7, 1.1, new THREE.MeshStandardMaterial({color: 0x333333, wireframe: true}), C.x + C.w - 2, 0.7, C.z + 2, g, 10);
-    for (let i = 0; i < 12; i++) {
-      const b = new THREE.Mesh(geoBalle, mat(0xd9f24a, {emissive: 0x4a5a00}));
-      b.position.set(C.x + C.w - 2 + Math.cos(i) * 0.45, 1.25 + (i % 3) * 0.12, C.z + 2 + Math.sin(i * 1.7) * 0.45);
-      g.add(b);
-    }
-    [0, 1, 2].forEach(i => { const c = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.8, 8), mat(0xff8a3d)); c.position.set(C.x + 4 + i * 3, 0.5, C.z + C.d - 2); c.castShadow = true; g.add(c); });
-  } else {
-    boite(1.8, 1.2, 1.4, 0x40464f, C.x + C.w - 2.4, 0.75, C.z + 2.2, g);
-    cylindre(0.5, 0.5, 0.6, 0xd9f24a, C.x + C.w - 2.4, 1.6, C.z + 2.2, g, 10);
-  }
-}
-
-function batiment(L) {
-  const g = new THREE.Group(), R = L.R;
-  const sols = {vestiaires: 0xd8b98a, gym: 0x4a5059, infirmerie: 0xeef2f4, presse: 0xd9d4c7, sponsors: 0x6e2e3e};
-  boite(R.w, 0.3, R.d, sols[L.sol], R.cx, 0.15, R.cz, g, false);
-  const murC = L.sol === "sponsors" ? 0xe8dcc3 : 0xeae3d6, e = 0.6, h = 3.2;
-  boite(R.w, h, e, murC, R.cx, h / 2, R.z + e / 2, g);                 // nord
-  boite(e, h, R.d, murC, R.x + e / 2, h / 2, R.cz, g);                 // ouest
-  boite(e, h, R.d, murC, R.x + R.w - e / 2, h / 2, R.cz, g);           // est
-  boite(R.w, 0.9, e, murC, R.cx, 0.45, R.z + R.d - e / 2, g);          // sud, bas : on voit dedans
-  boite(R.w + 0.2, 0.25, e + 0.2, 0x6b5442, R.cx, h, R.z + e / 2, g);
-  const X = R.x, Z = R.z, W = R.w, D = R.d;
-  if (L.sol === "vestiaires") {
-    for (let i = 0; i < 8; i++) boite(W / 8 - 0.4, 2.5, 1, i % 2 ? 0x6c8fb3 : 0x5f82a6, X + 1 + (i + 0.5) * (W - 2) / 8, 1.55, Z + 1.3, g);
-    boite(W - 8, 0.5, 1, 0x9b7a52, X + W / 2, 0.55, Z + D - 3.5, g);
-  } else if (L.sol === "gym") {
-    boite(6, 0.15, 4.5, 0x2d79c7, X + 4.5, 0.38, Z + D - 4.5, g);
-    [0, 1].forEach(i => { boite(2, 0.6, 4, 0x2b2f35, X + W - 3 - i * 3, 0.6, Z + 4, g); boite(2, 1.6, 0.3, 0x3a4048, X + W - 3 - i * 3, 1.6, Z + 2.2, g); });
-    for (let i = 0; i < 3; i++) {
-      const hx = X + 3 + i * 3, hz = Z + 2.2;
-      cylindre(0.07, 0.07, 2, 0x9aa3ad, hx, 1.2, hz, g, 6).rotation.z = Math.PI / 2;
-      cylindre(0.4, 0.4, 0.3, 0x1f2328, hx - 0.9, 1.2, hz, g, 10).rotation.z = Math.PI / 2;
-      cylindre(0.4, 0.4, 0.3, 0x1f2328, hx + 0.9, 1.2, hz, g, 10).rotation.z = Math.PI / 2;
-    }
-  } else if (L.sol === "infirmerie") {
-    [0, 1].forEach(i => {
-      boite(3, 0.8, 5.4, 0xffffff, X + W - 2.6, 0.7, Z + 4 + i * 7, g);
-      boite(2.4, 0.3, 1.2, 0xcfe3f2, X + W - 2.6, 1.2, Z + 2 + i * 7, g);
-    });
-    boite(2.4, 0.7, 0.2, 0xe63946, X + 4, 2.1, Z + 0.7, g);
-    boite(0.7, 2.4, 0.2, 0xe63946, X + 4, 2.1, Z + 0.7, g);
-  } else if (L.sol === "presse") {
-    boite(14, 1, 1.6, 0x0e3b2c, X + W / 2, 0.8, Z + 2.2, g);
-    [-4.5, -1.5, 1.5, 4.5].forEach(d => { cylindre(0.05, 0.05, 0.8, 0x222222, X + W / 2 + d, 1.7, Z + 2.2, g, 6); cylindre(0.15, 0.15, 0.3, 0xd9f24a, X + W / 2 + d, 2.15, Z + 2.2, g, 8); });
-    for (let r = 0; r < 2; r++) for (let c = 0; c < 9; c++) boite(1.8, 0.8, 1.2, 0x8b8f9a, X + 3 + c * ((W - 6) / 8.5), 0.6, Z + D - 4.5 + r * 2, g);
-    const parabole = new THREE.Mesh(new THREE.SphereGeometry(1.4, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.5), mat(0xf5f5f5, {side: THREE.DoubleSide}));
-    parabole.position.set(X + W - 2.5, 3.6, Z + 1.5); parabole.rotation.x = -0.9; parabole.castShadow = true;
-    g.add(parabole);
-  } else if (L.sol === "sponsors") {
-    [[0.22, 0.62], [0.5, 0.75], [0.78, 0.6]].forEach(([fx, fz]) => {
-      cylindre(1.8, 1.8, 0.2, 0xc9a646, X + W * fx, 1.1, Z + D * fz, g, 20);
-      cylindre(0.2, 0.3, 1, 0x8a6f24, X + W * fx, 0.55, Z + D * fz, g, 8);
-    });
-    boite(W - 6, 1.6, 0.2, new THREE.MeshStandardMaterial({color: 0xc9a646, emissive: 0x4a3a08, metalness: 0.4, roughness: 0.4}), X + W / 2, 2.2, Z + 0.75, g);
-  }
-  scene.add(g);
-  L.panneau = panneau(L.titre, L.role, R.x + 6, 5, R.z + 0.5);
-}
-
-function detente(L) {
-  const g = new THREE.Group(), R = L.R;
-  boite(R.w, 0.35, R.d, 0xcfae80, R.cx, 0.17, R.cz, g, false);
-  const px = R.x + 13, pz = R.cz + 1.5;
-  boite(23, 0.5, 15, 0xf2efe6, px, 0.25, pz, g, false);
-  const eau = new THREE.Mesh(new THREE.BoxGeometry(21, 0.2, 13),
-    new THREE.MeshStandardMaterial({color: 0x47b8d6, roughness: 0.15, metalness: 0.1, emissive: 0x0b4f63, emissiveIntensity: 0.35}));
-  eau.position.set(px, 0.45, pz);
-  eau.receiveShadow = true;
-  g.add(eau);
-  ondes = eau;
-  [[0.6, 0.35], [0.88, 0.32]].forEach(([fx, fz]) => {
-    const x = R.x + R.w * fx, z = R.z + R.d * fz;
-    cylindre(0.08, 0.08, 3.4, 0xeeeeee, x, 1.9, z, g, 6);
-    const toit = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1, 8), mat(0xe4572e));
-    toit.position.set(x, 3.6, z); toit.castShadow = true; g.add(toit);
-    const toit2 = new THREE.Mesh(new THREE.ConeGeometry(2.62, 1.01, 8, 1, true, Math.PI / 8, Math.PI / 4), mat(0xffffff, {side: THREE.DoubleSide}));
-    toit2.position.copy(toit.position); g.add(toit2);
-    [-1.4, 1.4].forEach(d => boite(1.2, 0.35, 3, 0xffffff, x + d, 0.55, z + 3, g));
-  });
-  scene.add(g);
-  L.panneau = panneau(L.titre, L.role, R.x + 8, 3.6, R.z + 0.5);
-}
-let ondes = null;
-
-const geoBalle = new THREE.SphereGeometry(0.16, 10, 8);
+const D = construireDecor({THREE, scene, panneau});
+const {LIEUX, COMPETITION, mat} = D;
+const publique = creerPublic({THREE, scene, D, REDUIT, PEAUX});
+// sorties des stades (par le tunnel) et des courts annexes (côté tribune)
+const SORTIES = {central: {x: 0, z: 19}, sf: {x: -84, z: 11}, qf: {x: 84, z: 11},
+                 r16a: {x: -110, z: 41}, r16b: {x: -70, z: 41}, service: {x: 70, z: 41}, retour: {x: 110, z: 41}};
 
 // ------------------------------------------------------------------ personnages
 const G = {
-  jambe: new THREE.CapsuleGeometry(0.17, 0.62, 3, 8),
-  chaussure: new THREE.BoxGeometry(0.34, 0.2, 0.5),
-  short: new THREE.CylinderGeometry(0.38, 0.42, 0.45, 10),
-  torse: new THREE.CapsuleGeometry(0.42, 0.45, 4, 10),
-  bras: new THREE.CapsuleGeometry(0.12, 0.55, 3, 6),
-  tete: new THREE.SphereGeometry(0.44, 14, 12),
+  jambe: new THREE.CapsuleGeometry(0.17, 0.62, 3, 8), chaussure: new THREE.BoxGeometry(0.34, 0.2, 0.5),
+  short: new THREE.CylinderGeometry(0.38, 0.42, 0.45, 10), torse: new THREE.CapsuleGeometry(0.42, 0.45, 4, 10),
+  bras: new THREE.CapsuleGeometry(0.12, 0.55, 3, 6), tete: new THREE.SphereGeometry(0.44, 14, 12),
   cheveux: new THREE.SphereGeometry(0.47, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2.1),
-  oeil: new THREE.SphereGeometry(0.055, 6, 6),
-  bandeau: new THREE.TorusGeometry(0.45, 0.06, 6, 18),
-  manche: new THREE.CylinderGeometry(0.035, 0.035, 0.5, 6),
-  cadre: new THREE.TorusGeometry(0.3, 0.04, 6, 16),
-  cordage: new THREE.CircleGeometry(0.28, 14),
-  balleIA: new THREE.SphereGeometry(0.3, 16, 12),
-  couture: new THREE.TorusGeometry(0.3, 0.025, 4, 24),
-  anneau: new THREE.RingGeometry(0.75, 1.0, 28),
-  choix: new THREE.RingGeometry(1.1, 1.35, 32),
+  oeil: new THREE.SphereGeometry(0.055, 6, 6), bandeau: new THREE.TorusGeometry(0.45, 0.06, 6, 18),
+  manche: new THREE.CylinderGeometry(0.035, 0.035, 0.5, 6), cadre: new THREE.TorusGeometry(0.3, 0.04, 6, 16),
+  cordage: new THREE.CircleGeometry(0.28, 14), balleIA: new THREE.SphereGeometry(0.3, 16, 12),
+  couture: new THREE.TorusGeometry(0.3, 0.025, 4, 24), anneau: new THREE.RingGeometry(0.75, 1.0, 28),
+  choix: new THREE.RingGeometry(0.75, 0.92, 32),
 };
 const MAT_OEIL = new THREE.MeshBasicMaterial({color: 0x1d1d1d});
 const MAT_IA = new THREE.MeshStandardMaterial({color: 0xd9f24a, emissive: 0xb7d82a, emissiveIntensity: 0.6, roughness: 0.5});
@@ -432,15 +121,14 @@ function figurine({maillot, peau, cheveux, short = 0xffffff, raquette, casquette
     ajoute(G.bras, mat(peau), 0, -0.36, 0, p);
     return p;
   });
-  const tete = ajoute(G.tete, mat(peau), 0, 2.68, 0);
+  ajoute(G.tete, mat(peau), 0, 2.68, 0);
   ajoute(G.cheveux, mat(cheveux), 0, 2.74, -0.03);
   ajoute(G.oeil, MAT_OEIL, -0.15, 2.7, 0.4);
   ajoute(G.oeil, MAT_OEIL, 0.15, 2.7, 0.4);
   if (bandeau) { const b = ajoute(G.bandeau, mat(0xffffff), 0, 2.8, 0); b.rotation.x = Math.PI / 2; }
   if (casquette) {
     ajoute(G.cheveux, mat(casquette), 0, 2.78, 0);
-    const v = ajoute(new THREE.BoxGeometry(0.55, 0.06, 0.4), mat(casquette), 0, 2.86, 0.45);
-    v.rotation.x = 0.15;
+    ajoute(new THREE.BoxGeometry(0.55, 0.06, 0.4), mat(casquette), 0, 2.86, 0.45).rotation.x = 0.15;
   }
   if (raquette) {
     const r = new THREE.Group(); r.position.set(0, -0.72, 0.1); r.rotation.x = 0.6; bras[1].add(r);
@@ -453,36 +141,37 @@ function figurine({maillot, peau, cheveux, short = 0xffffff, raquette, casquette
   else if (accessoire === "appareil") { ajoute(new THREE.BoxGeometry(0.55, 0.38, 0.3), mat(0x222222), 0.2, 2.45, 0.5); ajoute(new THREE.CylinderGeometry(0.12, 0.12, 0.2, 10), mat(0x5b6b7e), 0.2, 2.45, 0.7).rotation.x = Math.PI / 2; }
   else if (accessoire === "mallette") ajoute(new THREE.BoxGeometry(0.6, 0.45, 0.18), mat(0x6b4423), 0, -0.85, 0, bras[1]);
   else if (accessoire === "cravate") ajoute(new THREE.BoxGeometry(0.12, 0.6, 0.05), mat(0xc9a646), 0, 1.85, 0.43);
-  racine.scale.setScalar(1.3);
-  return {racine, corps, jambes, bras, tete};
+  racine.scale.setScalar(TAILLE);
+  return {racine, corps, jambes, bras};
 }
 
-const persos = new Map();     // id -> perso ; id coach = "c:" + id joueur
+const persos = new Map();     // id -> perso ; coach = "c:" + id, arbitre = "u:" + court
 const cliquables = [];
-
-function etiquette(texte, ia, type) {
-  const d = el("div", {class: "nom3d" + (ia ? " ia" : "") + (type === "coach" ? " coach" : "")}, texte);
-  const o = new CSS2DObject(d);
-  o.position.set(0, ia ? 4.35 : 3.8, 0);
-  return {o, d};
+function css2d(div, y, parent) {
+  const o = new CSS2DObject(div);
+  o.position.set(0, y, 0);
+  parent.add(o);
+  return o;
 }
-
 function enregistrer(id, f, type, texte, ia) {
-  const p = {id, type, ...f, pos: f.racine.position, chemin: [], delai: 0, phase: Math.random() * 6, face: 0, place: false};
+  const p = {id, type, ...f, pos: f.racine.position, chemin: [], delai: 0, phase: Math.random() * 6, face: 0, place: false, lieu: null, vitesse: 6};
   f.racine.traverse(o => { if (o.isMesh) { o.userData.perso = id; cliquables.push(o); } });
-  const e = etiquette(texte, ia, type);
-  f.racine.add(e.o);
-  p.nom = e.d;
-  const sol = new THREE.Mesh(G.anneau, new THREE.MeshBasicMaterial({color: 0x52b788, transparent: true, opacity: 0.85}));
-  sol.rotation.x = -Math.PI / 2; sol.position.y = 0.16 / 1.3;
-  f.racine.add(sol);
-  p.anneau = sol;
-  if (type !== "joueur") sol.visible = false;
+  p.nom = el("div", {class: "nom3d" + (ia ? " ia" : "") + (type === "coach" || type === "arbitre" ? " coach" : "")}, texte);
+  css2d(p.nom, ia ? 4.35 : 3.8, f.racine);
+  p.carton = el("div", {class: "carton3d", hidden: ""});
+  css2d(p.carton, 4.9, f.racine);
+  p.bulleDiv = el("div", {class: "bulle3d", hidden: ""});
+  p.bulle = css2d(p.bulleDiv, 5.4, f.racine);
+  p.bulle.center.set(0.1, 1);
+  const anneau = new THREE.Mesh(G.anneau, new THREE.MeshBasicMaterial({color: 0x52b788, transparent: true, opacity: 0.85}));
+  anneau.rotation.x = -Math.PI / 2; anneau.position.y = 0.1;
+  anneau.visible = type === "joueur";
+  f.racine.add(anneau);
+  p.anneau = anneau;
   scene.add(f.racine);
   persos.set(id, p);
   return p;
 }
-
 function creerJoueur(j) {
   const f = figurine({maillot: MAILLOTS[j.paire % 8], peau: PEAUX[hachage(j.nom) % 4], cheveux: CHEVEUX[hachage(j.pays + j.nom) % 5],
                       raquette: true, bandeau: true});
@@ -491,8 +180,7 @@ function creerJoueur(j) {
     const b = new THREE.Group();
     const s = new THREE.Mesh(G.balleIA, MAT_IA); s.castShadow = true;
     const c1 = new THREE.Mesh(G.couture, MAT_COUTURE); c1.rotation.y = 0.5;
-    b.add(s, c1);
-    b.position.y = 3.35;
+    b.add(s, c1); b.position.y = 3.35;
     f.racine.add(b);
     p.balleIA = b;
   }
@@ -500,210 +188,235 @@ function creerJoueur(j) {
   bless.rotation.set(Math.PI / 2 - 0.5, 0, 0.3); bless.position.y = 2.66; bless.visible = false;
   f.corps.add(bless);
   p.blessure = bless;
-  const coupe = new THREE.Group();
-  const cup = new THREE.Mesh(new THREE.LatheGeometry([new THREE.Vector2(0, 0), new THREE.Vector2(0.28, 0.02), new THREE.Vector2(0.08, 0.1),
+  const coupe = new THREE.Mesh(new THREE.LatheGeometry([new THREE.Vector2(0, 0), new THREE.Vector2(0.28, 0.02), new THREE.Vector2(0.08, 0.1),
     new THREE.Vector2(0.06, 0.4), new THREE.Vector2(0.35, 0.65), new THREE.Vector2(0.4, 0.95)], 16),
     new THREE.MeshStandardMaterial({color: 0xe8b923, metalness: 0.6, roughness: 0.3, side: THREE.DoubleSide}));
-  cup.castShadow = true;
-  coupe.add(cup); coupe.position.set(0, -0.95, 0.1); coupe.visible = false;
+  coupe.castShadow = true; coupe.position.set(0, -0.95, 0.1); coupe.visible = false;
   f.bras[0].add(coupe);
   p.coupe = coupe;
   if (j.pilote === "llm") {
     const fc = figurine({maillot: 0x1e4d3a, short: 0x1e4d3a, peau: PEAUX[hachage(j.entraineur) % 4], cheveux: CHEVEUX[hachage(j.entraineur) % 5],
                          casquette: 0x0e3b2c, accessoire: "porte-bloc"});
-    fc.racine.scale.setScalar(1.12);
     enregistrer("c:" + j.id, fc, "coach", j.entraineur.split(" ").pop(), false);
   }
 }
-
-function creerFigurants() {
-  const def = [["journaliste", "presse", 0.18, {maillot: 0x5b6b7e, peau: PEAUX[1], cheveux: CHEVEUX[2], short: 0x3a3f47, accessoire: "appareil"}, "Le Filet"],
+for (const [cle, ch] of Object.entries(D.chaises)) {
+  const f = figurine({maillot: 0x223a5e, short: 0x223a5e, peau: PEAUX[hachage(cle) % 4], cheveux: CHEVEUX[hachage(cle) % 5]});
+  const p = enregistrer("u:" + cle, f, "arbitre", "Arbitre", false);
+  p.pos.set(ch.x, ch.y - 1.05 * TAILLE, ch.z); p.racine.rotation.y = ch.face; p.face = ch.face; p.place = true;
+  for (const j of f.jambes) j.rotation.x = -1.45;                    // assis
+  p.racine.visible = false;
+}
+{
+  const def = [["journaliste", "presse", 0.15, {maillot: 0x5b6b7e, peau: PEAUX[1], cheveux: CHEVEUX[2], short: 0x3a3f47, accessoire: "appareil"}, "Le Filet"],
                ["agent", "sponsors", 0.3, {maillot: 0x2b2d42, short: 0x2b2d42, peau: PEAUX[2], cheveux: CHEVEUX[3], accessoire: "mallette"}, "Agent"],
-               ["sponsor", "sponsors", 0.66, {maillot: 0x3d405b, short: 0x3d405b, peau: PEAUX[0], cheveux: CHEVEUX[1], accessoire: "cravate"}, "Sponsor"]];
+               ["sponsor", "sponsors", 0.7, {maillot: 0x3d405b, short: 0x3d405b, peau: PEAUX[0], cheveux: CHEVEUX[1], accessoire: "cravate"}, "Sponsor"]];
   for (const [id, lieu, fx, opts, nom] of def) {
     const p = enregistrer(id, figurine(opts), "figurant", nom, false);
     const a = LIEUX[lieu].aire;
-    p.pos.set(a.x + a.w * fx, 0.3, a.z + a.d * 0.45);
-    p.place = true;
+    p.pos.set(a.x + a.w * fx, 0.25, a.z + 1); p.place = true;
   }
+  const t = LIEUX.federation.table;
+  const p = enregistrer("federation", figurine({maillot: 0x7b2cbf, short: 0x2b2d42, peau: PEAUX[3], cheveux: CHEVEUX[3], accessoire: "porte-bloc"}),
+                        "figurant", "Commission", false);
+  p.pos.set(t.x, 0.4, t.z - 1.2); p.place = true;
 }
 
 // ------------------------------------------------------------------ placement et marche
-const PLACE = 4.6, RANG = 5.6;
 function grille(a, n, face) {
-  const maxL = Math.max(1, Math.floor(a.d / 4.2));
-  let cols = Math.max(1, Math.min(n, Math.floor(a.w / PLACE)));
-  if (Math.ceil(n / cols) > maxL) cols = Math.ceil(n / maxL);
-  const pas = Math.min(PLACE, a.w / cols), lignes = Math.ceil(n / cols), h = Math.min(RANG, a.d / lignes);
-  const z0 = a.z + (a.d - h * lignes) / 2;
-  const out = [];
+  const pas = 1.7, rang = 2.0;
+  let cols = Math.max(1, Math.min(n, Math.floor(a.w / pas)));
+  const lignes = Math.ceil(n / cols), z0 = a.z + (a.d - rang * lignes) / 2, out = [];
   for (let i = 0; i < n; i++) {
     const c = i % cols, l = Math.floor(i / cols), dans = Math.min(cols, n - l * cols);
-    out.push({x: a.x + (a.w - dans * pas) / 2 + pas * (c + 0.35), z: z0 + h * (l + 0.6), face});
+    out.push({x: a.x + (a.w - dans * pas) / 2 + pas * (c + 0.5), z: z0 + rang * (l + 0.5), face});
   }
   return out;
 }
 function places(lieu, n) {
-  const L = LIEUX[lieu], a = L.aire;
-  if (lieu === "central" && n === 2) return [{x: L.C.x + L.C.w * 0.2, z: L.C.cz, face: Math.PI / 2}, {x: L.C.x + L.C.w * 0.8, z: L.C.cz, face: -Math.PI / 2}];
-  if (COMPETITION.includes(lieu) && n >= 2) {
-    const g = Math.ceil(n / 2), demi = a.w / 2;
-    return [...grille({x: a.x, z: a.z, w: demi - 1.5, d: a.d}, g, Math.PI / 2),
-            ...grille({x: a.x + demi + 1.5, z: a.z, w: demi - 1.5, d: a.d}, n - g, -Math.PI / 2)];
+  const L = LIEUX[lieu];
+  if (COMPETITION.includes(lieu) && n === 2) {            // de part et d'autre du filet, sur la ligne de fond
+    return [{x: L.C.cx - 12.6, z: L.C.cz + 0.8, face: Math.PI / 2}, {x: L.C.cx + 12.6, z: L.C.cz - 0.8, face: -Math.PI / 2}];
   }
-  return grille(a, n, 0);
+  if (COMPETITION.includes(lieu) && n > 2) {
+    const g = Math.ceil(n / 2);
+    return [...grille({x: L.C.cx - 16, z: L.C.cz - 6, w: 13, d: 12}, g, Math.PI / 2),
+            ...grille({x: L.C.cx + 3, z: L.C.cz - 6, w: 13, d: 12}, n - g, -Math.PI / 2)];
+  }
+  return grille(L.aire, n, 0);
 }
-const solDe = lieu => ["vestiaires", "physique", "infirmerie", "presse", "sponsors"].includes(lieu) ? 0.3 : lieu === "repos" ? 0.35 : 0.12;
+const solDe = lieu => ["vestiaires", "physique", "infirmerie", "presse", "sponsors"].includes(lieu) ? 0.25
+  : lieu === "federation" ? 0.4 : lieu === "repos" ? 0.2 : 0.08;
 
-function allerA(p, cible, immediat) {
-  const dans = z => z < ALLEE_Z - 3 ? "haut" : z > ALLEE_Z + 3 ? "bas" : "allee";
+// itinéraire réaliste : sortir par le tunnel, suivre les allées, entrer par le bon côté
+function itineraire(de, vers, lieuDe, lieuVers) {
+  const pts = [];
+  const nord = z => z < -45;
+  if (SORTIES[lieuDe]) pts.push({...SORTIES[lieuDe], y: 0.08});
+  const a = pts.length ? pts[pts.length - 1] : de;
+  const b = SORTIES[lieuVers] || vers;
+  if (nord(a.z) && nord(b.z)) pts.push({x: a.x, z: -50}, {x: b.x, z: -50});
+  else if (nord(a.z) !== nord(b.z)) {
+    const xv = (a.x + b.x) / 2 < 0 ? -46 : 46;
+    if (nord(a.z)) pts.push({x: a.x, z: -50}, {x: xv, z: -50}, {x: xv, z: 26}, {x: b.x, z: 26});
+    else pts.push({x: a.x, z: 26}, {x: xv, z: 26}, {x: xv, z: -50}, {x: b.x, z: -50});
+  } else if (Math.hypot(a.x - b.x, a.z - b.z) > 12) pts.push({x: a.x, z: 26}, {x: b.x, z: 26});
+  if (SORTIES[lieuVers]) pts.push({...SORTIES[lieuVers]});
+  pts.push(vers);
+  return pts.map(p => ({x: p.x, z: p.z, y: p.y ?? 0.08, face: p.face}));
+}
+function allerA(p, cible, lieu, immediat) {
   if (immediat || REDUIT || !p.place) {
     p.pos.set(cible.x, cible.y, cible.z); p.face = cible.face; p.racine.rotation.y = cible.face;
-    p.chemin = []; p.place = true;
+    p.chemin = []; p.place = true; p.lieu = lieu;
     return;
   }
-  const d = Math.hypot(cible.x - p.pos.x, cible.z - p.pos.z);
-  if (d < 0.05) { p.face = cible.face; return; }
-  // on passe par la grande allée quand on change de partie du village
-  p.chemin = dans(p.pos.z) !== dans(cible.z) || d > 30
-    ? [{x: p.pos.x, y: 0.1, z: ALLEE_Z}, {x: cible.x, y: 0.1, z: ALLEE_Z}, cible] : [cible];
-  p.face = cible.face;
-  p.delai = Math.random() * 0.8;
-}
-
-function marcher(p, dt, t) {
-  const f = p;
-  if (p.delai > 0) { p.delai -= dt; return; }
-  const but = p.chemin[0];
-  if (but) {
-    const dx = but.x - p.pos.x, dz = but.z - p.pos.z, d = Math.hypot(dx, dz);
-    const v = 9 * dt;
-    if (d <= v) { p.pos.set(but.x, but.y, but.z); p.chemin.shift(); }
-    else {
-      p.pos.x += dx / d * v; p.pos.z += dz / d * v; p.pos.y += (but.y - p.pos.y) * Math.min(1, dt * 6);
-      tourner(p, Math.atan2(dx, dz), dt * 10);
-    }
-    p.phase += dt * 11;
-    const a = Math.sin(p.phase) * 0.7;
-    f.jambes[0].rotation.x = a; f.jambes[1].rotation.x = -a;
-    f.bras[0].rotation.x = -a * 0.8; if (!p.frappe) f.bras[1].rotation.x = a * 0.8;
-    f.corps.position.y = Math.abs(Math.cos(p.phase)) * 0.08;
-  } else {
-    tourner(p, p.face, dt * 5);
-    for (const j of f.jambes) j.rotation.x *= 0.8;
-    f.bras[0].rotation.x *= 0.8;
-    if (!p.frappe) f.bras[1].rotation.x *= 0.8;
-    f.corps.position.y = Math.sin(t * 2 + p.phase) * 0.025;
-  }
-  if (p.balleIA) { p.balleIA.position.y = 3.35 + Math.sin(t * 2.4 + p.phase) * 0.12; p.balleIA.rotation.y += dt; }
+  if (Math.hypot(cible.x - p.pos.x, cible.z - p.pos.z) < 0.05) { p.face = cible.face; p.lieu = lieu; return; }
+  p.chemin = p.lieu === lieu ? [cible] : itineraire(p.pos, cible, p.lieu, lieu);
+  let L = 0, prec = p.pos;
+  for (const q of p.chemin) { L += Math.hypot(q.x - prec.x, q.z - prec.z); prec = q; }
+  p.vitesse = Math.max(3, L / 3.2);              // arrivé en ~3 s : le temps est compressé
+  p.face = cible.face; p.lieu = lieu;
+  p.delai = Math.random() * 0.6;
 }
 function tourner(p, cible, k) {
   let d = cible - p.racine.rotation.y;
   d = Math.atan2(Math.sin(d), Math.cos(d));
   p.racine.rotation.y += d * Math.min(1, k);
 }
-
-// échange de balle entre les deux finalistes
-const balle = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), new THREE.MeshStandardMaterial({color: 0xd9f24a, emissive: 0x6d7f10, emissiveIntensity: 0.4}));
-balle.castShadow = true; balle.visible = false;
-scene.add(balle);
-let rallye = null;
-function animerRallye(dt) {
-  if (!rallye) { balle.visible = false; return; }
-  const [a, b] = rallye.joueurs;
-  if (a.chemin.length || b.chemin.length || a.delai > 0 || b.delai > 0) { balle.visible = false; return; }
-  balle.visible = true;
-  if (REDUIT) { balle.position.set((a.pos.x + b.pos.x) / 2, 3, (a.pos.z + b.pos.z) / 2); return; }
-  rallye.u += dt / 1.15;
-  if (rallye.u >= 1) { rallye.u -= 1; rallye.sens = !rallye.sens; }
-  const [de, vers] = rallye.sens ? [a, b] : [b, a];
-  const u = rallye.u;
-  balle.position.set(de.pos.x + (vers.pos.x - de.pos.x) * u, 2.3 + Math.sin(Math.PI * u) * 3.2, de.pos.z + (vers.pos.z - de.pos.z) * u);
-  // coup droit : le bras de la raquette part au moment de frapper
-  for (const p of [a, b]) {
-    const frappe = (p === vers && u > 0.82) || (p === de && u < 0.12);
-    p.frappe = true;
-    p.bras[1].rotation.x += ((frappe ? -1.5 : -0.2) - p.bras[1].rotation.x) * Math.min(1, dt * 14);
+function marcher(p, dt, t) {
+  if (p.type === "arbitre") return;
+  if (p.delai > 0) { p.delai -= dt; return; }
+  const but = p.chemin[0];
+  if (but) {
+    const dx = but.x - p.pos.x, dz = but.z - p.pos.z, d = Math.hypot(dx, dz), v = p.vitesse * dt;
+    if (d <= v) { p.pos.set(but.x, but.y, but.z); p.chemin.shift(); }
+    else {
+      p.pos.x += dx / d * v; p.pos.z += dz / d * v; p.pos.y += (but.y - p.pos.y) * Math.min(1, dt * 6);
+      tourner(p, Math.atan2(dx, dz), dt * 10);
+    }
+    p.phase += dt * Math.min(16, 4 + p.vitesse);
+    const a = Math.sin(p.phase) * 0.7;
+    p.jambes[0].rotation.x = a; p.jambes[1].rotation.x = -a;
+    p.bras[0].rotation.x = -a * 0.8; if (!p.frappe) p.bras[1].rotation.x = a * 0.8;
+    p.corps.position.y = Math.abs(Math.cos(p.phase)) * 0.08;
+  } else {
+    tourner(p, p.face, dt * 5);
+    for (const j of p.jambes) j.rotation.x *= 0.8;
+    p.bras[0].rotation.x *= 0.8;
+    if (!p.frappe) p.bras[1].rotation.x *= 0.8;
+    p.corps.position.y = Math.sin(t * 2 + p.phase) * 0.025;
   }
+  if (p.balleIA) { p.balleIA.position.y = 3.35 + Math.sin(t * 2.4 + p.phase) * 0.12; p.balleIA.rotation.y += dt; }
 }
 
-// ------------------------------------------------------------------ données de la saison
-function vueSemaine(S, k) {
-  const pts = (S.classements.find(c => c.semaine === k) || S.classements[0]).points;
-  const matchs = S.matchs.filter(m => m.semaine <= k), finales = S.finales.filter(f => f.semaine <= k);
-  const negos = (S.negociations || []).filter(n => n.semaine <= k);
-  const joueurs = S.joueurs.map(j => {
-    const contrat = negos.filter(n => n.joueur === j.id && n.contrat).pop();
-    return {...j, points: pts[j.id], titres: finales.filter(f => f.vainqueur === j.id).length,
-      matchs: matchs.filter(m => m.vainqueur === j.id || m.perdant === j.id).length,
-      victoires: matchs.filter(m => m.vainqueur === j.id).length, sponsor: contrat ? contrat.sponsor : "",
-      memoire: j.memoire.filter(m => m.semaine <= k)};
+// échanges de balle sur chaque court où l'on joue
+const balles = COMPETITION.map(() => {
+  const b = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), new THREE.MeshStandardMaterial({color: 0xd9f24a, emissive: 0x6d7f10, emissiveIntensity: 0.5}));
+  b.castShadow = true; b.visible = false; scene.add(b);
+  return b;
+});
+let rallyes = [];
+function animerRallyes(dt) {
+  balles.forEach(b => { b.visible = false; });
+  rallyes.forEach((r, i) => {
+    const [a, b] = r.joueurs, balle = balles[i];
+    if (a.chemin.length || b.chemin.length || a.delai > 0 || b.delai > 0) return;
+    balle.visible = true;
+    if (REDUIT) { balle.position.set((a.pos.x + b.pos.x) / 2, 1.4, (a.pos.z + b.pos.z) / 2); return; }
+    r.u += dt / r.duree;
+    if (r.u >= 1) { r.u -= 1; r.sens = !r.sens; }
+    const [de, vers] = r.sens ? [a, b] : [b, a], u = r.u;
+    balle.position.set(de.pos.x + (vers.pos.x - de.pos.x) * u, 1.0 + Math.sin(Math.PI * u) * 1.6, de.pos.z + (vers.pos.z - de.pos.z) * u);
+    for (const p of [a, b]) {
+      const frappe = (p === vers && u > 0.85) || (p === de && u < 0.1);
+      p.frappe = true;
+      p.bras[1].rotation.x += ((frappe ? -1.5 : -0.2) - p.bras[1].rotation.x) * Math.min(1, dt * 14);
+    }
   });
-  return {...S, joueurs, matchs, finales, negociations: negos,
-          semaines: S.semaines.filter(w => w.semaine <= k), articles: S.articles.filter(a => a.semaine <= k)};
 }
-const semainesFaites = e => (e && e.saison) ? (e.saison.semaine_atteinte || e.saison.semaines.length) : 0;
+
+// ------------------------------------------------------------------ état de l'affichage
+let enPause = false, semaineVue = null, jourVu = null, affiche = null, recu = null, appelsAuGel = 0;
+let vue = null, V = null, premier = true, selection = null;
+const lecture = {actif: false, debut: 0};
+const nomDe = id => { const j = affiche?.saison?.joueurs.find(x => x.id === id); return j ? j.nom.split(" ").pop() : id; };
+const joueurDe = id => vue?.joueurs.find(x => x.id === id);
+const rangDe = id => vue ? [...vue.joueurs].sort((a, b) => (V.points[b.id] ?? 0) - (V.points[a.id] ?? 0)).findIndex(x => x.id === id) + 1 : 0;
+
 function decisionsEnDirect(e) {
   const m = new Map();
   for (const a of e.semaine_courante || []) if (a.role === "joueur" && a.sujet && a.ok) m.set(a.sujet, a.champs);
   return m;
 }
-function lieuDe(d, direct) {
-  if (direct) return direct.jouer === true ? "vestiaires" : (LIEUX[direct.entrainement] && !COMPETITION.includes(direct.entrainement) ? direct.entrainement : "repos");
-  if (!d) return "vestiaires";
-  if (d.blessure > 0 && !d.tour) return "infirmerie";
-  if (d.tour) return TOUR_LIEU[d.tour] || null;
-  return LIEUX[d.entrainement] ? d.entrainement : "repos";
+function montrerBulle(p, b) {
+  p.bulleDiv.hidden = !b;
+  if (b) p.bulleDiv.replaceChildren(el("b", {}, b.role), String(b.texte).length > 140 ? String(b.texte).slice(0, 140) + "…" : String(b.texte));
 }
 
-let enPause = false, semaineVue = null, affiche = null, recu = null, appelsAuGel = 0, vue = null, premier = true, selection = null;
-
-function placerTout(e, immediat) {
-  const S = vue, derniere = S.semaines[S.semaines.length - 1];
-  const D = new Map((derniere ? derniere.decisions : []).map(d => [d.joueur, d]));
-  const direct = decisionsEnDirect(e);
-  const tournoi = derniere && derniere.tournoi ? S.calendrier.find(t => t.nom === derniere.tournoi) : null;
-  const surf = tournoi ? SURFACES[tournoi.surface] : SANS_TOURNOI;
-  courtsCompetition.forEach(c => c.dessiner(surf.c));
-  abords.forEach(m => m.color.setHex(surf.bord));
-  const pc = LIEUX.central.panneau;
-  pc.replaceChildren(tournoi ? tournoi.nom : "Stade central", el("span", {}, tournoi ? "finale" : "pas de tournoi"));
+function placerTout(e, immediat, direct) {
+  const S = vue;
+  D.habiller(V.tournoi ? SURFACES[V.tournoi.surface] : NEUTRE);
+  const parCourt = new Map(V.matchs.map(m => [m.court, m]));
+  for (const c of COMPETITION) {
+    const m = parCourt.get(c);
+    LIEUX[c].panneau.replaceChildren(LIEUX[c].titre, el("span", {}, m ? TOURS[m.tour] : V.tournoi ? "libre" : "pas de tournoi"));
+  }
   for (const j of S.joueurs) if (!persos.has(j.id)) creerJoueur(j);
   const parLieu = new Map();
-  let r16 = 0;
   for (const j of S.joueurs) {
-    let l = lieuDe(D.get(j.id), direct.get(j.id));
-    if (l === null) l = r16++ % 2 ? "r16b" : "r16a";
-    if (!parLieu.has(l)) parLieu.set(l, []);
-    parLieu.get(l).push(j);
+    let lieu = V.semaine === 0 ? "vestiaires" : V.lieux.get(j.id).lieu;
+    const dd = direct.get(j.id);
+    if (dd) lieu = dd.jouer === true ? "vestiaires" : (LIEUX[dd.entrainement] && !COMPETITION.includes(dd.entrainement) ? dd.entrainement : "repos");
+    if (!parLieu.has(lieu)) parLieu.set(lieu, []);
+    parLieu.get(lieu).push(j.id);
   }
-  const finalistes = [];
-  for (const [l, liste] of parLieu) {
-    if (l === "central") liste.sort((a, b) => (D.get(b.id)?.tour === "V") - (D.get(a.id)?.tour === "V"));
-    const P = places(l, liste.length), y = solDe(l);
-    liste.forEach((j, i) => {
-      const p = persos.get(j.id), d = D.get(j.id);
-      allerA(p, {...P[i], y}, immediat);
-      const c = persos.get("c:" + j.id);
+  rallyes = [];
+  for (const [lieu, ids] of parLieu) {
+    const m = parCourt.get(lieu);
+    if (m) ids.sort((a, b) => (a === m.a ? -1 : b === m.a ? 1 : 0));
+    const P = places(lieu, ids.length), y = solDe(lieu);
+    ids.forEach((id, i) => {
+      const p = persos.get(id), L = V.lieux.get(id);
+      allerA(p, {...P[i], y}, lieu, immediat);
+      const c = persos.get("c:" + id);
       if (c) {
-        const ox = Math.cos(P[i].face) * 1.6 + 0.9 * Math.sin(P[i].face), oz = -Math.sin(P[i].face) * 1.6 + 1.2;
-        allerA(c, {x: P[i].x + (COMPETITION.includes(l) ? -Math.sin(P[i].face) * 2.4 : 2.1), y,
-                   z: P[i].z + (COMPETITION.includes(l) ? 2.6 : 0.9), face: P[i].face}, immediat);
+        // l'entraîneur : au premier rang côté de son joueur pendant un match, à côté de lui sinon
+        const cible = COMPETITION.includes(lieu)
+          ? {x: LIEUX[lieu].C.cx + (P[i].x < LIEUX[lieu].C.cx ? -7 : 7), y, z: LIEUX[lieu].C.cz - 8.4, face: Math.PI * 0}
+          : {x: P[i].x + 0.9, y, z: P[i].z + 0.5, face: P[i].face};
+        allerA(c, cible, lieu, immediat);
       }
-      const fat = d ? d.fatigue : 0;
+      const fat = L.fatigue || 0;
       p.anneau.material.color.setHex(fat >= 6 ? 0xe63946 : fat >= 3 ? 0xf4a261 : 0x52b788);
-      p.blessure.visible = !!(d && d.blessure > 0);
-      p.coupe.visible = !!(d && d.tour === "V");
-      p.decide = direct.has(j.id);
+      p.blessure.visible = !!L.blesse;
+      p.coupe.visible = !!L.coupe;
+      p.carton.hidden = !L.carton;
+      p.carton.className = "carton3d" + (L.carton === "point" ? " point" : "");
       p.frappe = false;
-      if (l === "central") finalistes.push(p);
+      montrerBulle(p, L.bulle);
     });
+    if (m) rallyes.push({joueurs: [persos.get(m.a), persos.get(m.b)], u: Math.random(), sens: true, duree: 1.0 + Math.random() * 0.3});
   }
-  rallye = finalistes.length === 2 ? {joueurs: finalistes, u: 0, sens: true} : null;
-  const n = direct.size;
-  $("info").textContent = n ? `${n} joueur(s) IA ont déjà choisi leur programme de la semaine suivante.` : "";
+  for (const c of COMPETITION) {
+    const u = persos.get("u:" + c), m = parCourt.get(c);
+    if (!u) continue;
+    u.racine.visible = !!m;
+    u.match = m || null;
+    u.nom.textContent = m && m.arbitre ? m.arbitre.split(" ").pop() : "Arbitre";
+    montrerBulle(u, m && m.sanctionsDuMatch.length ? {role: "Code de conduite", texte: m.sanctionsDuMatch.map(x =>
+      `${x.sanction === "avertissement" ? "Avertissement" : "Point de pénalité"}, ${nomDe(x.joueur)}`).join(" ; ")} : null);
+  }
+  for (const f of ["journaliste", "agent", "sponsor", "federation"]) montrerBulle(persos.get(f), V.figurants[f] || null);
+  const couleurs = {}, couleursCss = {};
+  S.joueurs.forEach(j => { couleurs[j.id] = MAILLOTS[j.paire % 8]; couleursCss[j.id] = MAILLOTS_CSS[j.paire % 8]; });
+  const pop = id => V.lieux.get(id).popularite ?? (100 - rangDe(id) * 5);
+  const populaires = [...S.joueurs].sort((a, b) => pop(b.id) - pop(a.id));
+  const jourLib = V.tournoi ? `${majuscule(jourNom(V.jour))} : ${JOURS[V.jour - 1].lib}` : `Semaine ${V.semaine}`;
+  publique.mettreAJour(V, couleurs, couleursCss, nomDe, jourLib, populaires);
 }
 
+// ------------------------------------------------------------------ tableau d'affichage, jours, journal
 function rendreTableau(e, k) {
   const S = e.saison, total = e.semaines, max = Math.max(semainesFaites(affiche), semainesFaites(recu));
   const cal = new Map(((S || {}).calendrier || []).map(t => [t.semaine, t]));
@@ -712,7 +425,7 @@ function rendreTableau(e, k) {
   $("total").textContent = `/ ${total}`;
   $("tournoi").textContent = !S ? "En attente de la première semaine" : k === 0 ? "Avant la saison" : t ? t.nom : "Semaine sans tournoi";
   $("detail").textContent = !S || k === 0 ? "" : t ? `${t.categorie === "Majeur" ? "Grand Chelem" : "Catégorie " + t.categorie}, ${SURFACES[t.surface].nom}`
-    : "Les joueurs s'entraînent ou récupèrent";
+    + (V && V.tournoi ? `, ${jourNom(V.jour)} (${JOURS[V.jour - 1].lib})` : "") : "Les joueurs s'entraînent ou récupèrent";
   const frise = $("frise");
   frise.replaceChildren();
   for (let w = 1; w <= total; w++) {
@@ -722,9 +435,33 @@ function rendreTableau(e, k) {
       title: tw ? `Semaine ${w} : ${tw.nom} (${tw.categorie})` : `Semaine ${w} : pas de tournoi`},
       el("b", {}, w), el("span", {}, tw ? (tw.categorie === "Majeur" ? "GC" : tw.categorie) : "repos"));
     b.disabled = !jouee;
-    b.addEventListener("click", () => choisirSemaine(w));
+    b.addEventListener("click", () => choisir(w, null));
     frise.append(b);
   }
+  const jours = $("jours");
+  jours.replaceChildren();
+  if (t && k >= 1 && k <= semainesFaites(affiche)) {
+    for (const J of JOURS) {
+      const b = el("button", {type: "button", class: "jour" + (V && V.jour === J.n ? " vu" : ""), "aria-pressed": String(!!(V && V.jour === J.n))},
+                   J.court, el("span", {}, J.lib));
+      b.addEventListener("click", () => choisir(k, J.n));
+      jours.append(b);
+    }
+  }
+}
+function rendreJournal() {
+  const ol = $("evenements");
+  ol.replaceChildren();
+  const ev = V.evenements.length ? V.evenements : [{type: "info", texte: "Rien de particulier ce jour-là."}];
+  for (const x of ev) {
+    const li = el("li", {class: x.type, ...(x.qui ? {"data-qui": x.qui, tabindex: 0} : {})}, x.texte);
+    if (x.qui) {
+      li.addEventListener("click", () => montrerFiche(x.qui));
+      li.addEventListener("keydown", e => { if (e.key === "Enter") montrerFiche(x.qui); });
+    }
+    ol.append(li);
+  }
+  $("journal-titre").textContent = V.tournoi ? `Journal du ${jourNom(V.jour)}` : `Journal de la semaine ${V.semaine}`;
 }
 
 function afficher(immediat = false) {
@@ -732,26 +469,28 @@ function afficher(immediat = false) {
   if (!e) return;
   const faites = semainesFaites(e);
   const k = semaineVue === null ? faites : Math.min(semaineVue, faites);
-  const figee = enPause || k < faites;
+  const figee = enPause || k < faites || lecture.actif;
   $("direct-btn").hidden = !figee;
-  rendreTableau(e, k);
   $("point").className = "point" + (figee || e.termine ? " fini" : "");
-  $("statut").textContent = enPause ? "En pause : la vue est figée, la simulation continue"
+  $("statut").textContent = lecture.actif ? `Lecture : semaine ${k}` : enPause ? "En pause : la vue est figée, la simulation continue"
     : k < faites ? `Archive de la semaine ${k}` : e.termine ? `${e.dossier} : saison terminée` : `${e.dossier} : en direct`;
-  if (!e.saison) return;
+  if (!e.saison) { rendreTableau(e, k); return; }
   vue = vueSemaine(e.saison, k);
-  const ev = figee ? {...e, semaine_courante: [], dernier_appel_il_y_a_s: null} : e;
-  placerTout(ev, immediat || premier);
+  V = vueJour(e.saison, k, jourVu ?? 7);
+  rendreTableau(e, k);
+  const enDirect = !figee && k === faites;
+  placerTout(e, immediat || premier, enDirect ? decisionsEnDirect(e) : new Map());
   premier = false;
-  heureDuJour(figee || e.termine ? 0.42 : Math.min(1, (e.semaine_courante || []).length / 23));
-  rendreBulle(ev);
+  if (!lecture.actif) heureDuJour(figee || e.termine ? 0.45 : Math.min(1, (e.semaine_courante || []).length / 23));
+  rendreJournal();
+  infobulle.hidden = true;                       // son contenu décrivait le jour précédent
+  if (enDirect) bulleEnDirect(e);
   if (selection) montrerFiche(selection, false);
 }
-
-function choisirSemaine(w) {
+function choisir(w, jour) {
   if (recu && semainesFaites(recu) > semainesFaites(affiche)) affiche = recu;
-  semaineVue = w;
-  if (w >= semainesFaites(affiche) && !enPause) semaineVue = null;
+  semaineVue = w; jourVu = jour;
+  if (w >= semainesFaites(affiche) && jour === null && !enPause && !lecture.actif) semaineVue = null;
   else if (!enPause) mettrePause(true);
   afficher();
 }
@@ -763,8 +502,36 @@ function mettrePause(oui) {
   if (oui) appelsAuGel = affiche ? affiche.appels : 0;
   else { if (recu) affiche = recu; $("retard").textContent = ""; }
 }
-$("pause").addEventListener("click", () => { mettrePause(!enPause); if (!enPause) semaineVue = null; afficher(); });
-$("direct-btn").addEventListener("click", () => { semaineVue = null; mettrePause(false); afficher(); });
+function arreterLecture() {
+  lecture.actif = false;
+  $("lecture").classList.remove("actif");
+  $("lecture").setAttribute("aria-pressed", "false");
+  $("lecture").textContent = "▶ Lecture";
+}
+function lancerLecture() {
+  if (!affiche || !affiche.saison) return;
+  const faites = semainesFaites(affiche);
+  let k = semaineVue ?? faites, d = jourVu ?? 7;
+  if (d === 7 || !V || !V.tournoi) { k = k >= faites ? 1 : k + 1; d = 1; }   // on repart au lundi suivant
+  lecture.actif = true;
+  $("lecture").classList.add("actif");
+  $("lecture").setAttribute("aria-pressed", "true");
+  $("lecture").textContent = "⏸ Lecture";
+  if (!enPause) mettrePause(true);
+  semaineVue = k; jourVu = d; lecture.debut = performance.now();
+  afficher();
+}
+function avancerLecture() {
+  const faites = semainesFaites(affiche);
+  if (V.tournoi && V.jour < 7) jourVu = V.jour + 1;
+  else if (V.semaine < faites) { semaineVue = V.semaine + 1; jourVu = 1; }
+  else { arreterLecture(); return; }
+  lecture.debut = performance.now();
+  afficher();
+}
+$("lecture").addEventListener("click", () => (lecture.actif ? arreterLecture() : lancerLecture()));
+$("pause").addEventListener("click", () => { arreterLecture(); mettrePause(!enPause); if (!enPause) { semaineVue = null; jourVu = null; } afficher(); });
+$("direct-btn").addEventListener("click", () => { arreterLecture(); semaineVue = null; jourVu = null; mettrePause(false); afficher(); });
 $("noms").addEventListener("click", () => {
   const oui = document.body.classList.toggle("avec-noms");
   $("noms").classList.toggle("actif", oui); $("noms").setAttribute("aria-pressed", String(oui));
@@ -775,11 +542,10 @@ async function rafraichir() {
     const r = await fetch("/etat", {cache: "no-store"});
     if (!r.ok) throw new Error("HTTP " + r.status);
     recu = await r.json();
-    if (!enPause) { affiche = recu; afficher(); }
+    if (!enPause && !lecture.actif) { affiche = recu; afficher(); }
     else {
       const n = recu.appels - appelsAuGel;
       $("retard").textContent = n > 0 ? `+${n} décision(s) du LLM depuis la pause` : "";
-      rendreTableau({...affiche, saison: affiche.saison}, semaineVue ?? semainesFaites(affiche));
     }
     if (recu.termine) return;
   } catch (err) {
@@ -789,102 +555,154 @@ async function rafraichir() {
   setTimeout(rafraichir, 3000);
 }
 
-// ------------------------------------------------------------------ heure du jour (avance pendant une semaine en direct)
+// ------------------------------------------------------------------ heure du jour
 const CIEL_MATIN = new THREE.Color(0xf6d7b0), CIEL_MIDI = new THREE.Color(0xa9d8ee), CIEL_SOIR = new THREE.Color(0xf0a77a);
 function heureDuJour(f) {
-  const a = Math.PI * (0.12 + 0.76 * f);                 // de l'est (matin) à l'ouest (soir)
-  soleil.position.set(Math.cos(a) * -140, 60 + Math.sin(a) * 90, 70);
+  const a = Math.PI * (0.12 + 0.76 * f);
+  soleil.position.set(Math.cos(a) * -220, 90 + Math.sin(a) * 140, 110);
   const c = f < 0.5 ? CIEL_MATIN.clone().lerp(CIEL_MIDI, f * 2) : CIEL_MIDI.clone().lerp(CIEL_SOIR, (f - 0.5) * 2);
   scene.background.copy(c); scene.fog.color.copy(c);
-  soleil.color.setHSL(0.1, 0.6, 0.62 + 0.3 * Math.sin(a) * 0.5);
 }
 
-// ------------------------------------------------------------------ bulle « vient de répondre »
-const bulleDiv = el("div", {class: "bulle3d"});
-const bulle = new CSS2DObject(bulleDiv);
-bulle.center.set(0.1, 1);
-function rendreBulle(e) {
+// ------------------------------------------------------------------ bulle « vient de répondre » (direct)
+function bulleEnDirect(e) {
   const a = e.derniers && e.derniers[0];
-  const actif = !e.termine && e.dernier_appel_il_y_a_s !== null && e.dernier_appel_il_y_a_s < 25 && a;
-  bulle.removeFromParent();
-  if (!actif) return;
-  const id = a.role === "journaliste" ? "journaliste" : a.role === "agent" ? "agent" : a.role === "sponsor" ? "sponsor"
+  if (e.termine || e.dernier_appel_il_y_a_s === null || e.dernier_appel_il_y_a_s >= 25 || !a) return;
+  const id = ["journaliste", "agent", "sponsor", "federation"].includes(a.role) ? a.role
     : a.role === "entraineur" ? "c:" + a.sujet : a.sujet;
   const p = persos.get(id) || persos.get(a.sujet);
   const ch = a.champs || {};
   const texte = ch.raisonnement || ch.conseil || ch.lecon || ch.titre || ch.reponse || ch.argument || ch.decision || "réfléchit…";
-  bulleDiv.replaceChildren(el("b", {}, ROLES[a.role] || a.role), String(texte).length > 130 ? String(texte).slice(0, 130) + "…" : String(texte));
-  if (p) { bulle.position.set(0, 4.6, 0); p.racine.add(bulle); }
-  else $("info").textContent = `${ROLES[a.role] || a.role} : ${texte}`;
+  if (p) montrerBulle(p, {role: (ROLES[a.role] || a.role) + " (à l'instant)", texte});
 }
 
-// ------------------------------------------------------------------ fiches
+// ------------------------------------------------------------------ jauges, infobulles, fiches
+const couleurJauge = (v, inverse) => { const x = inverse ? 100 - v : v; return x >= 60 ? "#52b788" : x >= 40 ? "#f4a261" : "#e63946"; };
+function jauges(L) {
+  const lignes = [];
+  const ligneJ = (lib, v, max, inverse) => {
+    if (v === undefined || v === null) return;
+    const pc = Math.round(v / max * 100);
+    lignes.push(el("span", {}, lib), el("i", {}, el("b", {style: `width:${pc}%;background:${couleurJauge(pc, inverse)}`})),
+                el("em", {}, max === 10 ? `${Math.round(v)}/10` : Math.round(v)));
+  };
+  ligneJ("Moral", L.moral, 100); ligneJ("Popularité", L.popularite, 100); ligneJ("Réputation", L.reputation, 100);
+  ligneJ("Fatigue", L.fatigue, 10, true);
+  return el("div", {class: "jauges"}, ...lignes);
+}
 const ligne = (cle, val) => el("div", {class: "kv"}, el("span", {}, cle), el("b", {}, val));
 const stat = (val, lib) => el("div", {class: "stat"}, el("b", {}, val), el("span", {}, lib));
 const citation = (qui, texte) => el("blockquote", {}, el("span", {}, qui), texte);
-const tete = (gauche, ia) => el("div", {class: "fiche-tete"}, el("span", {class: "pays"}, gauche),
-  el("span", {class: "pilote" + (ia ? " ia" : "")}, ia ? "Piloté par l'IA" : "Règle fixe"));
+const tete = (gauche, ia, libre) => el("div", {class: "fiche-tete"}, el("span", {class: "pays"}, gauche),
+  el("span", {class: "pilote" + (ia ? " ia" : "")}, libre || (ia ? "Piloté par l'IA" : "Règle fixe")));
 
+function contenuInfobulle(id) {
+  const p = persos.get(id);
+  if (!p || !V) return null;
+  if (p.type === "joueur") {
+    const j = joueurDe(id), L = V.lieux.get(id);
+    return [MAILLOTS_CSS[j.paire % 8], [
+      el("div", {class: "t"}, el("b", {class: "nom"}, j.nom), el("span", {class: "badge" + (j.pilote === "llm" ? " ia" : "")}, j.pilote === "llm" ? "IA" : "règle fixe")),
+      el("div", {class: "act"}, `${rangDe(id)}e, ${V.points[id]} pts. ${majuscule(L.activite)}.`),
+      jauges(L), L.bulle ? el("q", {}, L.bulle.texte) : null]];
+  }
+  if (p.type === "coach") {
+    const j = joueurDe(id.slice(2)), d = vue.semaines[vue.semaines.length - 1]?.decisions.find(x => x.joueur === j.id);
+    return ["#1e4d3a", [el("div", {class: "t"}, el("b", {class: "nom"}, j.entraineur), el("span", {class: "badge"}, "entraîneur")),
+      el("div", {class: "act"}, `Entraîneur de ${j.nom}.`), d && d.conseil && d.conseil.conseil ? el("q", {}, d.conseil.conseil) : null]];
+  }
+  if (p.type === "arbitre") {
+    const m = p.match;
+    return ["#223a5e", [el("div", {class: "t"}, el("b", {class: "nom"}, m && m.arbitre ? m.arbitre : "Arbitre de chaise"), el("span", {class: "badge"}, "arbitre")),
+      m ? el("div", {class: "act"}, `${majuscule(TOURS[m.tour])}, ${nomCourt(m.court)} : ${nomDe(m.a)} bat ${nomDe(m.b)} ${m.score}.`) : null,
+      m && m.sanctionsDuMatch.length ? el("q", {}, m.sanctionsDuMatch.map(x => `${x.sanction === "avertissement" ? "Avertissement" : "Point de pénalité"} à ${nomDe(x.joueur)} (${x.motif})`).join(" ; "))
+        : el("div", {class: "act"}, "Aucune sanction dans ce match.")]];
+  }
+  const noms = {journaliste: "Le Filet, journaliste", agent: "Agent sportif", sponsor: "Partenaires", federation: "Commission de discipline"};
+  const b = V.figurants[id];
+  return ["#5b6b7e", [el("div", {class: "t"}, el("b", {class: "nom"}, noms[id] || id)),
+    b ? el("q", {}, b.texte) : el("div", {class: "act"}, id === "federation" ? "Siège toutes les 4 semaines, le dimanche." : "Rien à signaler aujourd'hui.")]];
+}
+const infobulle = $("infobulle");
+function montrerInfobulle(id, x, y) {
+  const c = id ? contenuInfobulle(id) : null;
+  if (!c) { infobulle.hidden = true; return; }
+  infobulle.style.setProperty("--couleur", c[0]);
+  infobulle.replaceChildren(...c[1].filter(Boolean));
+  infobulle.hidden = false;
+  const w = infobulle.offsetWidth, h = infobulle.offsetHeight;
+  infobulle.style.left = Math.min(innerWidth - w - 8, x + 18) + "px";
+  infobulle.style.top = Math.max(8, Math.min(innerHeight - h - 8, y + 14)) + "px";
+}
+
+function courbe(S, id, k) {
+  if (!S.social) return null;
+  const pts = S.social.filter(x => x.semaine <= k).map(x => [x.semaine, x.joueurs[id].moral, x.joueurs[id].popularite]);
+  if (pts.length < 2) return null;
+  const W = 300, H = 56, X = s => 4 + s / Math.max(1, k) * (W - 8), Y = v => H - 4 - v / 100 * (H - 8);
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("class", "courbe");
+  svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "Moral (vert) et popularité (or), semaine par semaine");
+  const l50 = document.createElementNS(ns, "line");
+  Object.entries({x1: 0, x2: W, y1: Y(50), y2: Y(50), stroke: "#d5dbd7", "stroke-dasharray": "3 3"}).forEach(([a, v]) => l50.setAttribute(a, v));
+  svg.append(l50);
+  [[1, "#2d8a5f"], [2, "#c9a646"]].forEach(([i, c]) => {
+    const pl = document.createElementNS(ns, "polyline");
+    pl.setAttribute("points", pts.map(p => `${X(p[0]).toFixed(1)},${Y(p[i]).toFixed(1)}`).join(" "));
+    Object.entries({fill: "none", stroke: c, "stroke-width": 2.2, "stroke-linejoin": "round"}).forEach(([a, v]) => pl.setAttribute(a, v));
+    svg.append(pl);
+  });
+  return svg;
+}
 function ficheJoueur(id) {
-  const S = vue, j = S.joueurs.find(x => x.id === id), derniere = S.semaines[S.semaines.length - 1];
-  const d = derniere ? derniere.decisions.find(x => x.joueur === id) : null;
-  const rang = [...S.joueurs].sort((a, b) => b.points - a.points).findIndex(x => x.id === id) + 1;
+  const S = vue, j = joueurDe(id), L = V.lieux.get(id), k = V.semaine;
   const jumeau = S.joueurs.find(x => x.paire === j.paire && x.id !== id);
   const lecons = j.memoire.filter(m => m.type === "reflexion");
-  const tour = !derniere ? "–" : !derniere.tournoi ? "pas de tournoi" : d && d.tour ? TOURS[d.tour] : (d && !d.jouer ? "forfait" : "non inscrit");
-  const fat = d ? d.fatigue : 0, dd = decisionsEnDirect(enPause ? {} : affiche || {}).get(id);
+  const d = S.semaines.find(w => w.semaine === k)?.decisions.find(x => x.joueur === id);
+  const incidents = S.incidents.filter(i => i.joueur === id);
+  const relations = new Map();
+  S.vestiaires.filter(v => v.vainqueur === id || v.perdant === id).forEach(v => relations.set(v.vainqueur === id ? v.perdant : v.vainqueur, v));
+  const fed = S.federation.filter(f => f.joueur === id);
+  const social = L.moral !== undefined;
   return [MAILLOTS_CSS[j.paire % 8], [
     tete(j.pays, j.pilote === "llm"), el("h3", {}, j.nom),
-    el("p", {class: "perso-txt"}, `${j.age} ans, style ${j.style}. ${j.personnalite.charAt(0).toUpperCase() + j.personnalite.slice(1)}.`),
-    el("div", {class: "stats"}, stat(rang + "e", "rang"), stat(j.points, "points"), stat(j.titres, "titres"), stat(`${j.victoires}-${j.matchs - j.victoires}`, "bilan")),
-    el("div", {class: "fatigue"}, `Fatigue ${fat}/10${d && d.blessure ? ", blessé" : ""}`,
-      el("i", {style: `width:${fat * 10}%;background:${fat >= 6 ? "#e63946" : fat >= 3 ? "#f4a261" : "#52b788"}`})),
-    ligne("Depuis le début", `${signe(j.points - j.points_depart)} points`),
-    ligne(`Semaine ${derniere ? derniere.semaine : "–"}`, `${tour}, entraînement ${d ? d.entrainement : "–"}`),
+    el("p", {class: "perso-txt"}, `${j.age} ans, style ${j.style}. ${majuscule(j.personnalite)}.`),
+    el("div", {class: "stats"}, stat(rangDe(id) + "e", "rang"), stat(V.points[id], "points"), stat(j.titres, "titres"), stat(`${j.victoires}-${j.matchs - j.victoires}`, "bilan")),
+    ligne(V.tournoi ? majuscule(jourNom(V.jour)) : `Semaine ${k}`, majuscule(L.activite)),
+    el("h4", {}, social ? "Mental et image" : "Forme"), jauges(L),
+    social ? courbe(affiche.saison, id, k) : el("p", {class: "perso-txt"}, "Saison sans couche sociale (mode sobre ou v2)."),
+    ligne("Depuis le début", `${signe(V.points[id] - j.points_depart)} points`),
     d && d.tactique ? ligne("Tactique", d.tactique.replace("_", " ")) : null,
     j.pilote === "llm" ? ligne("Entraîneur", j.entraineur) : null,
     j.sponsor ? ligne("Sponsor", j.sponsor) : null,
-    ligne("Son jumeau", `${jumeau.nom} (${jumeau.pilote === "llm" ? "IA" : "règle"}), ${jumeau.points} pts`),
-    d && d.raisonnement ? citation("Son raisonnement", d.raisonnement) : null,
+    ligne("Son jumeau", `${jumeau.nom} (${jumeau.pilote === "llm" ? "IA" : "règle"}), ${V.points[jumeau.id]} pts`),
+    L.bulle ? citation(L.bulle.role, L.bulle.texte) : null,
+    d && d.raisonnement ? citation(`Son raisonnement (semaine ${k})`, d.raisonnement) : null,
     d && d.conseil && d.conseil.conseil ? citation(d.conseil.entraineur, d.conseil.conseil) : null,
-    dd ? citation("Programme de la semaine suivante", `${dd.jouer ? "Il joue" : "Il ne joue pas"}, entraînement ${dd.entrainement}. ${dd.raisonnement || ""}`) : null,
+    incidents.length ? el("h4", {}, `Sanctions (${incidents.length})`) : null,
+    incidents.length ? el("ul", {class: "liste"}, ...incidents.slice(-4).map(i => el("li", {},
+      `S${i.semaine} ${i.tournoi} : ${i.sanction === "avertissement" ? "avertissement" : "point de pénalité"}, ${i.motif}`))) : null,
+    fed.length ? el("ul", {class: "liste"}, ...fed.map(f => el("li", {}, `Fédération, S${f.semaine} : ${f.decision}${f.montant ? ` (${f.montant.toLocaleString("fr-FR")} €)` : ""}`))) : null,
+    relations.size ? el("h4", {}, "Relations aux vestiaires") : null,
+    relations.size ? el("ul", {class: "liste"}, ...[...relations].map(([adv, v]) => el("li", {},
+      `${nomDe(adv)} : ${v.relation <= -0.3 ? "tendue" : v.relation >= 0.3 ? "respect" : "neutre"} (dernier échange ${v.ton}, S${v.semaine})`))) : null,
     lecons.length ? citation("Dernière leçon", lecons[lecons.length - 1].texte.replace(/^Leçon : /, "")) : null]];
 }
-function ficheCoach(id) {
-  const S = vue, j = S.joueurs.find(x => x.id === id);
-  const conseils = S.semaines.flatMap(w => w.decisions.filter(d => d.joueur === id && d.conseil && d.conseil.conseil)
-    .map(d => ({semaine: w.semaine, ...d.conseil, suivi: d.conseil.recommande_jouer === d.jouer})));
-  const tacts = {};
-  conseils.forEach(c => { tacts[c.tactique] = (tacts[c.tactique] || 0) + 1; });
-  const dernier = conseils[conseils.length - 1];
-  return ["#1e4d3a", [tete("Staff", true), el("h3", {}, j.entraineur), el("p", {class: "perso-txt"}, `Entraîneur de ${j.nom}.`),
-    el("div", {class: "stats"}, stat(conseils.length, "conseils"), stat(conseils.length ? `${conseils.filter(c => c.suivi).length}/${conseils.length}` : "–", "écouté")),
-    ligne("Tactiques choisies", Object.entries(tacts).map(([t, n]) => `${t.replace("_", " ")} ×${n}`).join(", ") || "–"),
-    dernier ? citation(`Semaine ${dernier.semaine}`, dernier.conseil) : null]];
-}
-function ficheFigurant(id) {
-  const S = vue;
-  if (id === "journaliste") {
-    const a = S.articles[S.articles.length - 1];
-    return ["#5b6b7e", [tete("Presse", true), el("h3", {}, "Le Filet"), el("p", {class: "perso-txt"}, `${S.articles.length} article(s) publiés cette saison.`),
-      a ? citation(a.titre, a.article) : el("p", {class: "perso-txt"}, "Le premier article paraît après le premier tournoi.")]];
-  }
-  const negos = S.negociations || [], signes = negos.filter(n => n.contrat);
-  return ["#6e2e3e", [tete(id === "agent" ? "Agent" : "Sponsors", true), el("h3", {}, id === "agent" ? "Agent sportif" : "Sponsors"),
-    el("div", {class: "stats"}, stat(negos.length, "négociations"), stat(signes.length, "contrats")),
-    ...signes.slice(-4).map(n => ligne(S.joueurs.find(x => x.id === n.joueur).nom, `${n.contrat.toLocaleString("fr-FR")} € (${n.sponsor})`)),
-    negos.length ? null : el("p", {class: "perso-txt"}, "Les négociations ont lieu en semaines 6 et 12.")]];
+function ficheAutre(id) {
+  const c = contenuInfobulle(id);
+  return [c[0], [tete("", false, persos.get(id).type), ...c[1]]];
 }
 
 const anneauChoix = new THREE.Mesh(G.choix, new THREE.MeshBasicMaterial({color: 0xd9f24a, transparent: true, opacity: 0.95}));
 anneauChoix.rotation.x = -Math.PI / 2; anneauChoix.visible = false;
 scene.add(anneauChoix);
 let viseCamera = null;
-
 function montrerFiche(id, centrer = true) {
-  if (!vue) return;
+  if (!vue || !V) return;
   const p = persos.get(id);
-  const [couleur, contenu] = id.startsWith("c:") ? ficheCoach(id.slice(2)) : p && p.type === "figurant" ? ficheFigurant(id) : ficheJoueur(id);
+  if (!p) return;
+  const [couleur, contenu] = p.type === "joueur" ? ficheJoueur(id) : ficheAutre(id);
   const f = $("fiche");
   const fermer = el("button", {type: "button", class: "fermer", "aria-label": "Fermer la fiche"}, "×");
   fermer.addEventListener("click", fermerFiche);
@@ -893,8 +711,8 @@ function montrerFiche(id, centrer = true) {
   f.hidden = false;
   if (selection && selection !== id) persos.get(selection)?.nom.classList.remove("choisi");
   selection = id;
-  p?.nom.classList.add("choisi");
-  if (centrer && p) viseCamera = {cible: p.pos.clone(), t: 0};
+  p.nom.classList.add("choisi");
+  if (centrer) viseCamera = {cible: p.pos.clone(), t: 0};
 }
 function fermerFiche() {
   $("fiche").hidden = true;
@@ -902,29 +720,37 @@ function fermerFiche() {
   selection = null;
 }
 $("vue").addEventListener("click", () => { fermerFiche(); viseCamera = {cible: VUE.cible.clone(), pos: VUE.pos.clone(), t: 0}; });
-addEventListener("keydown", e => { if (e.key === "Escape") fermerFiche(); });
+addEventListener("keydown", e => {
+  if (e.key === "Escape") fermerFiche();
+  if (e.key === " " && e.target === document.body) { e.preventDefault(); lecture.actif ? arreterLecture() : lancerLecture(); }
+});
 
-// ------------------------------------------------------------------ souris : survol et clic
+// ------------------------------------------------------------------ souris : survol (infobulle) et clic (fiche)
 const rayon = new THREE.Raycaster(), souris = new THREE.Vector2();
 let survol = null, appui = null;
+function visibleDe(o) { for (let x = o; x; x = x.parent) if (!x.visible) return false; return true; }
 function viser(ev) {
   const r = rendu.domElement.getBoundingClientRect();
   souris.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
   rayon.setFromCamera(souris, camera);
-  const h = rayon.intersectObjects(cliquables, false)[0];
+  const h = rayon.intersectObjects(cliquables.filter(visibleDe), false)[0];
   return h ? h.object.userData.perso : null;
 }
 rendu.domElement.addEventListener("pointermove", ev => {
+  if (ev.buttons) { infobulle.hidden = true; return; }
   const id = viser(ev);
-  if (id === survol) return;
-  if (survol) persos.get(survol)?.nom.classList.remove("survol");
-  survol = id;
-  if (id) persos.get(id)?.nom.classList.add("survol");
-  rendu.domElement.style.cursor = id ? "pointer" : "";
+  if (id !== survol) {
+    if (survol) persos.get(survol)?.nom.classList.remove("survol");
+    survol = id;
+    if (id) persos.get(id)?.nom.classList.add("survol");
+    rendu.domElement.style.cursor = id ? "pointer" : "";
+  }
+  montrerInfobulle(id, ev.clientX, ev.clientY);
 });
+rendu.domElement.addEventListener("pointerleave", () => { infobulle.hidden = true; });
 rendu.domElement.addEventListener("pointerdown", ev => {
   appui = [ev.clientX, ev.clientY];
-  document.querySelector(".aide")?.classList.add("vue");   // l'aide s'efface au premier geste
+  document.querySelector(".aide")?.classList.add("vue");
 });
 rendu.domElement.addEventListener("pointerup", ev => {
   if (!appui || Math.hypot(ev.clientX - appui[0], ev.clientY - appui[1]) > 6) return;
@@ -937,21 +763,27 @@ const horloge = new THREE.Clock();
 function boucle() {
   const dt = Math.min(0.05, horloge.getDelta()), t = horloge.elapsedTime;
   for (const p of persos.values()) marcher(p, dt, t);
-  animerRallye(dt);
+  animerRallyes(dt);
+  publique.animer(dt, t);
   if (!REDUIT) {
-    drapeaux.forEach((d, i) => { d.rotation.y = Math.sin(t * 2 + i) * 0.25; });
-    if (ondes) ondes.material.emissiveIntensity = 0.3 + Math.sin(t * 1.5) * 0.06;
+    D.drapeaux.forEach((d, i) => { d.rotation.y = Math.sin(t * 2 + i) * 0.25; });
+    if (D.ondes) D.ondes.material.emissiveIntensity = 0.3 + Math.sin(t * 1.5) * 0.06;
+  }
+  if (lecture.actif) {
+    const f = (performance.now() - lecture.debut) / DUREE_JOUR;
+    heureDuJour(0.1 + 0.8 * Math.min(1, f));
+    if (f >= 1) avancerLecture();
   }
   if (selection) {
     const p = persos.get(selection);
     anneauChoix.visible = !!p;
-    if (p) { anneauChoix.position.set(p.pos.x, p.pos.y + 0.05, p.pos.z); anneauChoix.scale.setScalar(1.3 + Math.sin(t * 4) * 0.06); }
+    if (p) { anneauChoix.position.set(p.pos.x, p.pos.y + 0.06, p.pos.z); anneauChoix.scale.setScalar(1 + Math.sin(t * 4) * 0.06); }
   } else anneauChoix.visible = false;
   if (viseCamera) {
     viseCamera.t += dt / 0.9;
     const k = Math.min(1, viseCamera.t), e = 1 - Math.pow(1 - k, 3);
     const decal = camera.position.clone().sub(controles.target);
-    if (!viseCamera.pos && decal.length() > 70) decal.setLength(70);
+    if (!viseCamera.pos && decal.length() > 32) decal.setLength(32);
     controles.target.lerp(viseCamera.cible, e * 0.25);
     if (viseCamera.pos) camera.position.lerp(viseCamera.pos, e * 0.25);
     else camera.position.copy(controles.target).add(decal);
@@ -962,27 +794,12 @@ function boucle() {
   etiquettes.render(scene, camera);
   requestAnimationFrame(boucle);
 }
-
 addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   rendu.setSize(innerWidth, innerHeight); etiquettes.setSize(innerWidth, innerHeight);
 });
 
-// ------------------------------------------------------------------ construction
-sol();
-for (const L of Object.values(LIEUX)) {
-  if (L.type === "stade") stade(L);
-  else if (L.type === "arene") arene(L);
-  else if (L.type === "annexe") annexe(L, false);
-  else if (L.type === "entrainement") entrainement(L);
-  else if (L.type === "detente") detente(L);
-  else batiment(L);
-}
-[[-35, -52], [-35, -28], [-35, -3], [35, -52], [35, -28], [35, -3], [-77, 2], [77, 2], [-78, -55], [78, -55],
- [-78, 54], [78, 54], [0, 1.2], [-95, -20], [95, -20], [-95, 30], [95, 30], [-60, 62], [60, 62], [0, 64],
- [-100, -60], [100, -60], [-30, -66], [30, -66]].forEach(([x, z], i) => arbre(x, z, 0.8 + (i % 3) * 0.2));
-creerFigurants();
-heureDuJour(0.42);
+heureDuJour(0.45);
 boucle();
 requestAnimationFrame(() => $("voile").classList.add("parti"));
 rafraichir();

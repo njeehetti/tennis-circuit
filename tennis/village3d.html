@@ -59,7 +59,7 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
 .bulle3d{max-width:270px;background:#fff;color:var(--encre);border:2px solid var(--tableau);border-radius:14px;padding:7px 11px;font-size:13.5px;line-height:1.4;box-shadow:0 10px 24px -12px rgba(0,0,0,.5)}
 .bulle3d b{display:block;font:600 15px "Barlow Condensed",sans-serif;color:var(--tableau-2)}
 /* fiche */
-#fiche{position:fixed;right:16px;top:178px;bottom:16px;width:350px;max-width:calc(100% - 32px);z-index:4;overflow-y:auto;background:var(--papier);border-radius:16px;border-top:12px solid var(--couleur,#0e3b2c);padding:0 16px 14px;font-size:14px;box-shadow:0 24px 54px -18px rgba(0,0,0,.6);transition:transform .35s cubic-bezier(.3,.7,.2,1)}
+#fiche{position:fixed;right:16px;top:226px;bottom:16px;width:350px;max-width:calc(100% - 32px);z-index:4;overflow-y:auto;background:var(--papier);border-radius:16px;border-top:12px solid var(--couleur,#0e3b2c);padding:0 16px 14px;font-size:14px;box-shadow:0 24px 54px -18px rgba(0,0,0,.6);transition:transform .35s cubic-bezier(.3,.7,.2,1)}
 #fiche[hidden]{display:block;transform:translateX(calc(100% + 40px));visibility:hidden}
 #fiche .fiche-tete{display:flex;justify-content:space-between;align-items:center;margin:10px 30px 2px 0;font-family:"Barlow Condensed",sans-serif}
 #fiche .pays{font-size:16px;font-weight:700;color:#5d6b64}
@@ -78,6 +78,49 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
 #fiche blockquote{margin:8px 0 0;padding:8px 10px;background:#eef3ec;border-radius:10px;font-size:13.5px;line-height:1.45}
 #fiche blockquote span{display:block;font:600 14px "Barlow Condensed",sans-serif;color:var(--tableau-2)}
 #fiche .fermer{position:absolute;right:6px;top:8px;border:0;background:none;font-size:24px;line-height:1;color:#56635c;padding:2px 8px;cursor:pointer}
+/* jours de la semaine */
+.jours{grid-column:1/-1;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.jours:empty{display:none}
+.jour{display:flex;align-items:baseline;justify-content:center;gap:6px;padding:3px 0;border:1.5px solid rgba(217,242,74,.25);border-radius:999px;background:transparent;color:var(--givre);font:600 15px "Barlow Condensed",sans-serif;cursor:pointer}
+.jour span{font:500 12.5px "Barlow",sans-serif;opacity:.85}
+.jour:hover{background:rgba(217,242,74,.12)}
+.jour.vu{background:var(--balle);border-color:var(--balle);color:var(--tableau)}
+.jour:disabled{opacity:.4;cursor:default}
+#lecture.actif{background:var(--balle);color:var(--tableau)}
+.aff-actions .progres-jour{flex-basis:100%;height:3px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden}
+.aff-actions .progres-jour i{display:block;height:100%;width:0;background:var(--balle)}
+/* journal du jour */
+#journal{position:fixed;left:16px;top:226px;width:330px;max-width:calc(100% - 32px);max-height:calc(100% - 300px);overflow-y:auto;z-index:3;background:rgba(255,253,247,.94);border-radius:14px;padding:10px 14px 8px;box-shadow:0 18px 40px -22px rgba(0,0,0,.6)}
+#journal h2{margin:0 0 4px;font:700 19px "Barlow Condensed",sans-serif;color:var(--tableau)}
+#evenements{list-style:none;margin:0;padding:0;font-size:13.5px;line-height:1.4}
+#evenements li{padding:6px 0 6px 12px;border-top:1px solid #e6e9e4;position:relative;cursor:default}
+#evenements li[data-qui]{cursor:pointer}
+#evenements li::before{content:"";position:absolute;left:0;top:12px;width:6px;height:6px;border-radius:50%;background:#9aa5b1}
+#evenements li.match::before{background:#2e86ab}
+#evenements li.incident::before{background:#f3c623;border-radius:1px;width:6px;height:9px;top:10px}
+#evenements li.tension::before{background:#e63946}
+#evenements li.vestiaire::before{background:#52b788}
+#evenements li.federation::before{background:#7b2cbf}
+#evenements li.presse::before,#evenements li.sponsor::before{background:#c9a646}
+/* infobulle de survol */
+#infobulle{position:fixed;z-index:6;pointer-events:none;width:280px;background:var(--papier);border-radius:12px;border-top:6px solid var(--couleur,#0e3b2c);padding:8px 11px 9px;font-size:13px;line-height:1.4;box-shadow:0 16px 36px -14px rgba(0,0,0,.55)}
+#infobulle[hidden]{display:none}
+#infobulle .t{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+#infobulle b.nom{font:700 19px "Barlow Condensed",sans-serif}
+#infobulle .badge{font:600 12.5px "Barlow Condensed",sans-serif;padding:0 8px;border-radius:999px;background:#e8ece9;color:#46524c;white-space:nowrap}
+#infobulle .badge.ia{background:var(--balle);color:var(--tableau)}
+#infobulle .act{color:#46524c;margin:2px 0 5px}
+#infobulle q{display:block;margin-top:5px;padding:5px 8px;background:#eef3ec;border-radius:8px;font-style:italic;quotes:"« " " »"}
+.jauges{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:center;font-size:12px;color:#56635c}
+.jauges i{display:block;height:6px;border-radius:3px;background:#e3e8e5;overflow:hidden}
+.jauges i b{display:block;height:100%;border-radius:3px}
+.jauges em{font-style:normal;font-variant-numeric:tabular-nums;color:var(--encre);font-weight:600}
+#fiche .jauges{margin:4px 0 8px;font-size:13px}
+#fiche .courbe{width:100%;height:56px;display:block;margin:2px 0 6px}
+#fiche h4{font:600 16px "Barlow Condensed",sans-serif;margin:10px 0 2px;color:var(--tableau-2)}
+#fiche ul.liste{margin:2px 0 0;padding-left:16px;font-size:13px}
+.carton3d{width:13px;height:18px;border-radius:2px;background:#f3c623;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.carton3d.point{background:#e63946}
 /* chargement / erreur */
 #voile{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:var(--tableau);color:var(--craie);font:600 26px "Barlow Condensed",sans-serif;text-align:center;transition:opacity .6s;padding:16px}
 #voile.parti{opacity:0;pointer-events:none}
@@ -85,7 +128,8 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
 #voile a{color:var(--balle)}
 @media (max-width:820px){.affichage{grid-template-columns:auto minmax(0,1fr);left:8px;right:8px;top:8px}.aff-actions{grid-column:1/-1;justify-content:flex-start}
   .frise{grid-template-columns:repeat(6,minmax(0,1fr))}.aff-semaine b{font-size:40px}.aff-tournoi b{font-size:21px}
-  #fiche{top:auto;height:55%;left:8px;right:8px;width:auto;bottom:8px}.aide{display:none}}
+  #fiche{top:auto;height:55%;left:8px;right:8px;width:auto;bottom:8px}.aide{display:none}
+  #journal{top:auto;bottom:60px;max-height:28%;left:8px;width:auto;right:8px}.jour span{display:none}}
 @media (prefers-reduced-motion: reduce){.case.encours::after,.point{animation:none}#fiche{transition:none}}
 </style>
 <script type="importmap">
@@ -101,6 +145,7 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
   <div class="aff-semaine"><small>Semaine</small><b id="num">–</b><em id="total"></em></div>
   <div class="aff-tournoi"><b id="tournoi">Connexion…</b><span id="detail"></span></div>
   <div class="aff-actions">
+    <button id="lecture" type="button" aria-pressed="false">▶ Lecture</button>
     <button id="pause" type="button" aria-pressed="false">⏸ Pause</button>
     <button id="direct-btn" type="button" hidden>Revenir au direct</button>
     <button id="vue" type="button" class="discret">Vue d'ensemble</button>
@@ -109,15 +154,21 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
     <span id="retard"></span>
   </div>
   <div class="frise" id="frise" role="group" aria-label="Choisir la semaine affichée"></div>
+  <div class="jours" id="jours" role="group" aria-label="Choisir le jour affiché"></div>
 </header>
 
+<aside id="journal" aria-labelledby="journal-titre">
+  <h2 id="journal-titre">Journal du jour</h2>
+  <ol id="evenements"></ol>
+</aside>
+<div id="infobulle" hidden role="tooltip"></div>
 <aside id="fiche" hidden aria-live="polite"></aside>
 
 <div class="statut">
   <p><span class="point" id="point"></span><span id="statut">connexion…</span></p>
   <p id="info"></p>
 </div>
-<p class="aide">Glisser pour tourner, molette pour zoomer, clic droit pour se déplacer. Balle jaune au-dessus de la tête : joueur piloté par l'IA. Même maillot : jumeaux statistiques.</p>
+<p class="aide">Survoler un personnage pour le voir, cliquer pour sa fiche complète. Glisser pour tourner, molette pour zoomer, clic droit pour se déplacer. « Lecture » déroule le tournoi jour par jour. Balle jaune : joueur piloté par l'IA ; même maillot : jumeaux ; carton : sanction de l'arbitre.</p>
 
 <div id="voile">Construction du village…<small>chargement de la 3D</small></div>
 

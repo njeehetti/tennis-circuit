@@ -89,6 +89,11 @@ class FauxLLM:
             "conference": {"reponse": "Je me sens bien, merci.", "revele_blessure": False},
             "agent": {"montant": 200000, "argument": "Mon joueur est en grande forme."},
             "sponsor": {"decision": "accepter", "montant": 200000, "message": "Marché conclu."},
+            "incident": {"sur_le_court": "Vous plaisantez ?", "apres_match": "J'étais frustré.",
+                         "excuses": self.n % 2 == 0},
+            "vestiaire": {"replique_vainqueur": "Beau match.", "replique_perdant": "Bravo, à la prochaine.",
+                          "ton": ("respect", "neutre", "tension")[self.n % 3]},
+            "federation": {"decision": "amende", "montant": 5000, "communique": "Amende pour récidive."},
         }
         if self.n % 17 == 0:          # simule un échec de temps en temps
             self.stats["echecs"] += 1

@@ -122,6 +122,10 @@ def dossier_le_plus_recent(racine: Path) -> Path:
     return max(candidats, key=lambda d: (d / "llm.jsonl").stat().st_mtime)
 
 
+# Modules du village 3D servis tels quels (liste fermée : aucun chemin arbitraire).
+MODULES_3D = ("/village3d.js", "/village3d_jour.js", "/village3d_public.js", "/village3d_decor.js")
+
+
 def creer_serveur(dossier: Path, port: int) -> ThreadingHTTPServer:
     cache: dict = {}
     ici = Path(__file__).parent      # relus à chaque requête : on peut modifier la page à chaud
@@ -143,8 +147,8 @@ def creer_serveur(dossier: Path, port: int) -> ThreadingHTTPServer:
                 self._envoyer(200, (ici / "scene.js").read_bytes(), "text/javascript; charset=utf-8")
             elif chemin in ("/3d", "/3d/"):
                 self._envoyer(200, (ici / "village3d.html").read_bytes(), "text/html; charset=utf-8")
-            elif chemin == "/village3d.js":
-                self._envoyer(200, (ici / "village3d.js").read_bytes(), "text/javascript; charset=utf-8")
+            elif chemin in MODULES_3D:
+                self._envoyer(200, (ici / chemin[1:]).read_bytes(), "text/javascript; charset=utf-8")
             elif chemin == "/etat":
                 corps = json.dumps(etat(dossier, cache), ensure_ascii=False).encode("utf-8")
                 self._envoyer(200, corps, "application/json; charset=utf-8")

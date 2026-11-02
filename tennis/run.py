@@ -20,6 +20,8 @@ def main(argv=None) -> Path:
     p.add_argument("--faux", action="store_true", help="faux LLM déterministe (sans Ollama)")
     p.add_argument("--controle", action="store_true", help="tous les joueurs en baseline (mesure du bruit)")
     p.add_argument("--prompts", type=int, default=2, choices=(1, 2), help="version des prompts")
+    p.add_argument("--sobre", action="store_true",
+                   help="sans couche sociale (moral, public, arbitre, vestiaires, fédération), comme en v2")
     p.add_argument("--sans-tableau", action="store_true", help="ne pas générer le tableau de bord")
     a = p.parse_args(argv)
     nom = a.nom or f"saison_g{a.graine}_{time.strftime('%Y%m%d_%H%M')}"
@@ -29,7 +31,7 @@ def main(argv=None) -> Path:
     debut = time.time()
     saison = Saison(charger_gabarits(), llm, graine=a.graine, semaines=a.semaines,
                     controle=a.controle, progres=lambda m: print(m, flush=True),
-                    version_prompts=a.prompts)
+                    version_prompts=a.prompts, social=not a.sobre)
     sortie = dossier / "saison.json"
 
     def sauvegarder(partiel: dict) -> None:

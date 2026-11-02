@@ -20,11 +20,33 @@ probabilités, donc **leurs choix ont des conséquences mesurables**.
 | Journaliste (« Le Filet ») | titre, article, question piquante au vainqueur | après chaque tournoi |
 | Joueur en conférence de presse | réponse ; cache ou révèle une blessure (information privée) | après chaque titre |
 | Agent sportif contre sponsor | négociation de contrat en 3 allers-retours au plus | mi-saison et fin de saison |
+| Joueur sanctionné | réaction à un avertissement ou un point de pénalité de l'arbitre | pendant un match (couche sociale) |
+| Joueurs aux vestiaires | échange après un match : respect, neutre ou tension | 2 matchs par tournoi (couche sociale) |
+| Commission de la fédération | classement, rappel à l'ordre ou amende (20 000 € au plus) | toutes les 4 semaines, si incident (couche sociale) |
 
 Chaque joueur LLM a un **flux de mémoire** (souvenirs datés et pondérés par
 importance, récupération récence + importance, comme dans *Generative
 Agents*, Park et al. 2023) et **réfléchit** après chaque tournoi : la leçon
 qu'il en tire entre dans sa mémoire et oriente ses décisions suivantes.
+
+### Couche sociale : moral, popularité, réputation
+
+Chaque joueur a trois jauges de 0 à 100. Le **moral** monte avec les
+victoires et baisse avec les défaites ou les sanctions ; la **popularité**
+suit les titres et le comportement ; la **réputation** retient les
+incidents. Avant un match, le moral, le bilan du face-à-face et le soutien
+du public (plus fort pour le joueur populaire, avec un petit bonus pour
+l'outsider) décalent la probabilité de gagner un point au service d'au
+plus ±2 points de pourcentage : un effet réel mais borné, pour que le
+talent reste décisif. Un arbitre (5 noms fictifs) peut donner un
+avertissement puis un point de pénalité ; un joueur qui « craque » perd
+un peu au service pendant le set suivant. Taux mesurés sur 20 saisons :
+6,8 % des matchs avec avertissement, 0,15 % avec point de pénalité.
+
+La couche est **active par défaut** avec `tennis.run` et coupée avec
+`--sobre`. L'expérience scientifique (`outils/experience.py`) reste en
+mode sobre : la comparaison LLM / règle fixe ne doit pas dépendre de ces
+effets.
 
 ## Le dispositif expérimental
 
@@ -72,8 +94,10 @@ py -3.12 -m venv .venv
 .venv\Scripts\python -m pip install requests pytest
 ollama pull qwen3:8b
 
-# une saison avec le LLM (≈ 270 appels, ≈ 25 min sur une RTX 4070 portable)
+# une saison avec le LLM et la couche sociale (≈ 290 appels, ≈ 25 min sur une RTX 4070 portable)
 .venv\Scripts\python -m tennis.run --graine 1
+# la même sans couche sociale (comme la saison v2)
+.venv\Scripts\python -m tennis.run --graine 1 --sobre
 # sans Ollama, avec un faux LLM déterministe (quelques secondes)
 .venv\Scripts\python -m tennis.run --faux
 # expérience sur plusieurs graines
@@ -108,9 +132,23 @@ fait que **lire** `llm.jsonl` et `saison.json` : on peut l'arrêter et le
 relancer sans gêner la simulation. Il n'écoute que sur `127.0.0.1`.
 
 Le même serveur sert aussi le **village en 3D** sur <http://127.0.0.1:8765/3d>
-(Three.js chargé depuis jsDelivr, il faut donc Internet et WebGL) : on
-tourne, zoome et se déplace dans le village, et un clic sur un personnage
-ouvre sa fiche. Le plan 2D reste disponible sur `/`.
+(Three.js chargé depuis jsDelivr, il faut donc Internet et WebGL). C'est un
+complexe de tournoi à l'échelle réelle (1 unité = 1 m, courts de
+23,77 × 10,97 m) : court central dans une cuvette de 18 rangées, Courts 1
+et 2, deux courts annexes, deux courts d'entraînement, centre des joueurs
+(vestiaires, salle de sport, infirmerie), salle de presse, salon des
+partenaires, espace détente, fédération et fan zone. Les surfaces changent
+avec le tournoi (dur, terre, gazon), les tribunes se remplissent selon le
+tour et prennent les couleurs du joueur soutenu, des arbitres sont sur
+leur chaise et des ramasseurs autour des courts où l'on joue.
+
+Un tournoi se suit **jour par jour** : premier tour lundi et mardi, quarts
+mercredi et jeudi, journée médias vendredi, demies samedi, finale
+dimanche (bouton « Lecture » ou barre Espace, 5 s par jour). Survoler un
+personnage affiche une infobulle (rang, activité du jour, jauges) ; un
+clic ouvre sa fiche (courbe du moral et de la popularité, sanctions,
+relations aux vestiaires, décisions de la fédération). Le plan 2D reste
+disponible sur `/`.
 
 ## Robustesse face au LLM
 
@@ -133,7 +171,9 @@ tennis/
   llm.py        client Ollama et faux LLM de test
   run.py        point d'entrée
   dashboard.py  tableau de bord HTML
+  social.py     moral, popularité, réputation, arbitres, sanctions
   direct.py     suivi en direct (serveur local + direct.html)
+  village3d*.js village 3D : décor, public, jour par jour, personnages
 outils/         expérience multi-graines, téléchargement des données
 docs/           document de conception et journal des choix
 tests/          pytest (faux LLM : aucun appel réseau)

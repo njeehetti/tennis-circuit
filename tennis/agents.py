@@ -12,6 +12,7 @@ import unicodedata
 from dataclasses import dataclass
 
 from .joueurs import ENTRAINEMENTS, TACTIQUES, RETOUR_MOYEN, SERVICE_MOYEN, Etat, Joueur
+from .social import REGLES_SOCIALES
 from .tournoi import NOMS_SURFACES, Tournoi
 
 SYSTEME = ("Tu joues un rôle dans une simulation de circuit de tennis fictif. "
@@ -138,7 +139,8 @@ def decision_baseline(e: Etat, tournoi: Tournoi | None, semaine: int) -> Decisio
 
 def decision_joueur(llm, j: Joueur, e: Etat, semaine: int, tournoi: Tournoi | None,
                     a_venir: list, conseil: str, souvenirs: str, rang: int,
-                    version: int = 2) -> Decision:
+                    version: int = 2, social: str = "") -> Decision:
+    """`social` : état social en texte (moral, popularité, réputation) ; vide en mode sobre."""
     if tournoi:
         semaine_txt = (f"Cette semaine (semaine {semaine}) : {tournoi.nom}, catégorie {tournoi.categorie}, "
                        f"sur {NOMS_SURFACES[tournoi.surface]}, {tournoi.points('V')} points au vainqueur.")
@@ -150,7 +152,9 @@ def decision_joueur(llm, j: Joueur, e: Etat, semaine: int, tournoi: Tournoi | No
         f"Tu es {j.nom}, {j.age} ans, joueur de tennis professionnel fictif, {rang}e au classement. "
         f"Personnalité : {j.personnalite}.\n"
         f"Ton profil : {_profil_txt(j, tournoi.surface if tournoi else 'Hard')}.\n"
-        f"Ton état : {_etat_txt(e)}.\n{REGLES[version]}\n\n{semaine_txt}\nProchains tournois : {suite}.\n"
+        f"Ton état : {_etat_txt(e)}.\n"
+        + (f"Ton état mental et social : {social}.\n{REGLES_SOCIALES}\n" if social else "")
+        + f"{REGLES[version]}\n\n{semaine_txt}\nProchains tournois : {suite}.\n"
         f"Conseil de ton entraîneur : {conseil or 'aucun cette semaine'}\n"
         f"Tes souvenirs importants :\n{souvenirs}\n\n"
         "Décide pour cette semaine. Réponds en JSON : "
@@ -296,3 +300,72 @@ def negociation(llm, j: Joueur, e: Etat, rang: int, titres: int, sponsor: tuple,
         if decision == "refuser":
             break
     return {"joueur": j.id, "sponsor": nom_s, "echanges": echanges, "contrat": contrat}
+
+
+# ---------------------------------------------------------------- couche sociale (v3)
+def reaction_sanction(llm, j: Joueur, nature: str, motif: str, arbitre: str, adversaire: str,
+                      score: str, tournoi: Tournoi) -> dict:
+    """Le joueur sanctionné réagit (sur le court puis devant la presse)."""
+    quoi = "un avertissement" if nature == "avertissement" else "un point de pénalité"
+    prompt = (
+        f"Tu es {j.nom}, joueur de tennis fictif ({j.personnalite}). À {tournoi.nom}, contre "
+        f"{adversaire}, à {score}, l'arbitre {arbitre} vient de t'infliger {quoi} pour {motif}.\n"
+        "Réagis comme le personnage, en restant crédible (pas de violence). Réponds en JSON : "
+        '{"sur_le_court": "ce que tu dis à l\'arbitre, une phrase", '
+        '"apres_match": "ce que tu dis ensuite à la presse, une phrase", '
+        '"excuses": true ou false (reconnais-tu ta faute ?)}'
+    )
+    rep = llm.json("incident", SYSTEME, prompt, ("sur_le_court", "apres_match"), sujet=j.id)
+    if rep is None:
+        return {"sur_le_court": "", "apres_match": "Pas de commentaire.", "excuses": False, "repli": True}
+    return {"sur_le_court": str(rep["sur_le_court"])[:250], "apres_match": str(rep["apres_match"])[:300],
+            "excuses": booleen(rep.get("excuses"), False)}
+
+
+TONS = ("respect", "neutre", "tension")
+
+
+def vestiaire(llm, a: Joueur, b: Joueur, contexte: list) -> dict:
+    """Deux joueurs se croisent aux vestiaires après leur match (a a gagné)."""
+    prompt = (
+        f"Vestiaires d'un tournoi de tennis fictif. {a.nom} ({a.personnalite}) vient de battre "
+        f"{b.nom} ({b.personnalite}). Contexte réel (n'invente aucun fait) :\n"
+        + "\n".join(f"- {c}" for c in contexte) +
+        "\n\nÉcris leur bref échange, crédible pour des professionnels (le plus souvent poli, "
+        "parfois froid ; jamais d'insulte). Réponds en JSON : "
+        '{"replique_vainqueur": "une phrase", "replique_perdant": "une phrase", '
+        '"ton": "respect" | "neutre" | "tension"}'
+    )
+    rep = llm.json("vestiaire", SYSTEME, prompt, ("replique_vainqueur", "replique_perdant", "ton"),
+                   sujet=b.id)
+    if rep is None:
+        return {"replique_vainqueur": "", "replique_perdant": "", "ton": "neutre", "repli": True}
+    ton, _ = choisir(rep.get("ton"), TONS, "neutre")
+    return {"replique_vainqueur": str(rep["replique_vainqueur"])[:250],
+            "replique_perdant": str(rep["replique_perdant"])[:250], "ton": ton}
+
+
+DECISIONS_FEDERATION = ("aucune", "rappel", "amende")
+AMENDE_MAX = 20000
+
+
+def federation(llm, j: Joueur, incidents: list, reputation: float) -> dict:
+    """La commission de discipline examine les incidents d'un joueur sur la période."""
+    prompt = (
+        "Tu es la commission de discipline de la Fédération du circuit fictif. Tu appliques le "
+        "code de conduite avec mesure : un avertissement isolé ne mérite en général qu'un rappel ; "
+        "les récidives ou un point de pénalité justifient une amende (au plus "
+        f"{AMENDE_MAX} euros).\nJoueur : {j.nom}, réputation {reputation:.0f}/100.\n"
+        "Incidents de la période :\n" + "\n".join(f"- {i}" for i in incidents) +
+        '\n\nRéponds en JSON : {"decision": "aucune" | "rappel" | "amende", "montant": entier en '
+        'euros (0 sauf amende), "communique": "une phrase publique"}'
+    )
+    rep = llm.json("federation", SYSTEME, prompt, ("decision", "communique"), sujet=j.id)
+    if rep is None:
+        return {"decision": "rappel", "montant": 0, "communique": "La fédération rappelle le joueur au "
+                "respect du code de conduite.", "repli": True}
+    dec, _ = choisir(rep.get("decision"), DECISIONS_FEDERATION, "rappel")
+    montant = max(0, min(AMENDE_MAX, entier_sur(rep.get("montant"), 0))) if dec == "amende" else 0
+    if dec == "amende" and montant == 0:
+        dec = "rappel"
+    return {"decision": dec, "montant": montant, "communique": str(rep["communique"])[:300]}

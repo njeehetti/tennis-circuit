@@ -25,6 +25,7 @@ class Resultat:
     points: str = ""                    # suite des points : "a"/"b" = gagné par A/B, "|" fin de jeu
     points_gagnes: tuple[int, int] = (0, 0)
     abandon: bool = False
+    sanctions: tuple = ()               # (joueur 0/1, "avertissement" | "point", set n°)
 
     def score(self) -> str:
         return " ".join(f"{a}-{b}" for a, b in self.sets)
@@ -41,8 +42,14 @@ class _Compteur:
     p: tuple[float, float]              # p[i] = proba que i gagne un point sur son service
     trace: list = field(default_factory=list)
     gagnes: list = field(default_factory=lambda: [0, 0])
+    offerts: list = field(default_factory=list)     # points de pénalité à attribuer
 
     def point(self, serveur: int) -> int:
+        if self.offerts:                             # point de pénalité : pas de tirage
+            gagnant = self.offerts.pop(0)
+            self.trace.append("ab"[gagnant])
+            self.gagnes[gagnant] += 1
+            return gagnant
         gagnant = serveur if self.rng.random() < self.p[serveur] else 1 - serveur
         self.trace.append("ab"[gagnant])
         self.gagnes[gagnant] += 1
@@ -70,11 +77,17 @@ class _Compteur:
 
 
 def jouer_match(a: Force, b: Force, rng: random.Random, retour_moyen: float,
-                sets_gagnants: int = 2) -> Resultat:
-    """Joue un match complet. A sert le premier jeu (tiré au sort en amont)."""
+                sets_gagnants: int = 2, apres_set=None, tilt: float = 0.0) -> Resultat:
+    """Joue un match complet. A sert le premier jeu (tiré au sort en amont).
+
+    `apres_set(n, jeux, sets)` (facultatif) renvoie les sanctions de l'arbitre
+    sous forme de tuples (joueur, nature) : un point de pénalité est attribué à
+    l'adversaire sur le point suivant, et toute sanction fait perdre `tilt` au
+    fautif sur ses points de service pour le reste du match."""
     c = _Compteur(rng, (proba_point(a.service, b.retour, retour_moyen),
                         proba_point(b.service, a.retour, retour_moyen)))
     sets, gagnes_sets, serveur = [], [0, 0], 0
+    sanctions = []
     while max(gagnes_sets) < sets_gagnants:
         jeux = [0, 0]
         while True:
@@ -90,9 +103,17 @@ def jouer_match(a: Force, b: Force, rng: random.Random, retour_moyen: float,
         sets.append((jeux[0], jeux[1]))
         gagnes_sets[0 if jeux[0] > jeux[1] else 1] += 1
         c.trace.append("/")
+        if apres_set and max(gagnes_sets) < sets_gagnants:
+            for fautif, nature in apres_set(len(sets), tuple(jeux), tuple(gagnes_sets)):
+                sanctions.append((fautif, nature, len(sets)))
+                if nature == "point":
+                    c.offerts.append(1 - fautif)
+                p = list(c.p)
+                p[fautif] = max(P_MIN, p[fautif] - tilt)
+                c.p = (p[0], p[1])
     return Resultat(vainqueur=0 if gagnes_sets[0] > gagnes_sets[1] else 1,
                     sets=tuple(sets), points="".join(c.trace),
-                    points_gagnes=(c.gagnes[0], c.gagnes[1]))
+                    points_gagnes=(c.gagnes[0], c.gagnes[1]), sanctions=tuple(sanctions))
 
 
 def forfait(vainqueur: int) -> Resultat:

@@ -13,14 +13,20 @@ import random
 import statistics
 from dataclasses import replace
 
-from . import agents
+from . import agents, social
 from .agents import ENTRAINEURS, SPONSORS
 from .joueurs import (RETOUR_MOYEN, Etat, apres_match, creer_joueurs, fin_de_semaine,
                       force_effective, points_initiaux)
-from .match import jouer_match
+from .match import Force, jouer_match
 from .memoire import Souvenir, ajouter, en_texte, recuperer
 from .tournoi import CALENDRIER, NOMS_SURFACES, TOURS, prochains, tableau, tournoi_de_la_semaine
 
+# Programme d'une semaine de tournoi (1 = lundi … 7 = dimanche) : premier tour lundi et
+# mardi, quarts mercredi et jeudi, journée médias vendredi, demies samedi, finale dimanche.
+JOURS_TOUR = {"R16": (1, 2), "QF": (3, 4), "SF": (6, 6), "F": (7, 7)}
+JOUR_MEDIAS, JOUR_PRESSE = 5, 7
+FEDERATION_SEMAINES = 4     # la commission de discipline siège toutes les 4 semaines
+VESTIAIRES_PAR_TOURNOI = 2
 IMPORTANCE_TOUR = {"R16": 3, "QF": 4, "SF": 5, "F": 7, "V": 9}
 NOMS_TOURS = {"R16": "huitième de finale", "QF": "quart de finale", "SF": "demi-finale",
               "F": "finale"}
@@ -28,7 +34,8 @@ NOMS_TOURS = {"R16": "huitième de finale", "QF": "quart de finale", "SF": "demi
 
 class Saison:
     def __init__(self, gabarits: list, llm, graine: int = 1, semaines: int = 12,
-                 controle: bool = False, progres=None, version_prompts: int = 2):
+                 controle: bool = False, progres=None, version_prompts: int = 2,
+                 social: bool = False):
         self.rng = random.Random(graine)
         self.graine = graine
         self.llm = llm
@@ -47,6 +54,18 @@ class Saison:
         self.face_a_face: dict = {}
         self.journal = {"semaines": [], "matchs": [], "articles": [], "negociations": [],
                         "classements": [], "finales": []}
+        # Couche sociale (v3) : moral, popularité, réputation, arbitre, vestiaires, fédération.
+        # Désactivée par défaut : les saisons v2 et l'expérience restent reproductibles.
+        self.social = social
+        self._jour, self._matchs_semaine = 0, []     # positionnés par _tournoi avant chaque match
+        if social:
+            rangs = {i: k + 1 for k, i in enumerate(self.classement())}
+            from . import social as _soc          # le paramètre `social` masque le module ici
+            self.sociaux = {j.id: _soc.initial(j.personnalite, rangs[j.id], len(self.joueurs))
+                            for j in self.joueurs}
+            self.relations: dict = {}
+            self.journal.update({"incidents": [], "vestiaires": [], "federation": [], "social": []})
+            self._instantane(0)
 
     # ----------------------------------------------------------------- outils
     def classement(self) -> list:
@@ -79,6 +98,7 @@ class Saison:
         classement = self.classement()
         self.progres(f"semaine {semaine} : {tournoi.nom if tournoi else 'pas de tournoi'}")
         decisions, tactiques, conseils, etats_avant = {}, {}, {}, dict(self.etats)
+        sociaux_avant = dict(self.sociaux) if self.social else {}
         for j in self.joueurs:
             e = self.etats[j.id]
             if self._llm_actif(j):
@@ -93,7 +113,8 @@ class Saison:
                                       "recommande_jouer": reco, "repli": repli}
                 souv = en_texte(recuperer(self.memoires[j.id], semaine))
                 d = agents.decision_joueur(self.llm, j, e, semaine, tournoi, a_venir, conseil,
-                                           souv, classement.index(j.id) + 1, self.version_prompts)
+                                           souv, classement.index(j.id) + 1, self.version_prompts,
+                                           social.en_texte(self.sociaux[j.id]) if self.social else "")
             else:
                 d = agents.decision_baseline(e, tournoi, semaine)
                 tactiques[j.id] = "equilibre"
@@ -116,6 +137,14 @@ class Saison:
                 if lecon:
                     self._souvenir(j.id, semaine, f"Leçon : {lecon}", imp, "reflexion")
 
+        if self.social:
+            for j in self.joueurs:
+                s = social.apres_tournoi(self.sociaux[j.id], tours.get(j.id))
+                self.sociaux[j.id] = social.fin_de_semaine(s, j.id in tours, decisions[j.id].entrainement,
+                                                           etats_avant[j.id].fatigue)
+            if semaine % FEDERATION_SEMAINES == 0 or semaine == self.semaines:
+                self._federation(semaine)
+
         if semaine in (6, self.semaines):
             self._negociations(semaine)
 
@@ -128,8 +157,13 @@ class Saison:
                 "tactique": tactiques.get(j.id), "conseil": conseils.get(j.id),
                 "fatigue": round(etats_avant[j.id].fatigue, 1), "blessure": etats_avant[j.id].blessure,
                 "tour": tours.get(j.id),
+                **({"moral": round(sociaux_avant[j.id].moral),
+                    "popularite": round(sociaux_avant[j.id].popularite),
+                    "reputation": round(sociaux_avant[j.id].reputation)} if self.social else {}),
             } for j in self.joueurs],
         })
+        if self.social:
+            self._instantane(semaine)
         self.journal["classements"].append(
             {"semaine": semaine, "points": {i: e.points for i, e in self.etats.items()}})
 
@@ -142,15 +176,19 @@ class Saison:
             return {}
         places = tableau(entrants)
         atteint = {i: "R16" for i in entrants}
+        self._matchs_semaine = []
         surprises = []
         rangs = {i: k + 1 for k, i in enumerate(self.classement())}
         for tour in TOURS:
             suivants = []
+            reels = [k for k in range(0, len(places), 2) if places[k] is not None and places[k + 1] is not None]
             for k in range(0, len(places), 2):
                 a, b = places[k], places[k + 1]
                 if a is None or b is None:
                     suivants.append(a or b)
                     continue
+                # programme jour par jour : moitié haute du tableau le premier jour du tour
+                self._jour = JOURS_TOUR[tour][0 if reels.index(k) < (len(reels) + 1) // 2 else 1]
                 gagnant, score = self._match(semaine, t, tour, a, b, tactiques)
                 perdant = b if gagnant == a else a
                 atteint[perdant] = tour
@@ -167,6 +205,8 @@ class Saison:
         for i, tour in atteint.items():
             e = self.etats[i]
             self.etats[i] = replace(e, points=e.points + t.points(tour), gains=e.gains + t.prix(tour))
+        if self.social:
+            self._vestiaires(semaine, t)
         self._presse(semaine, t, champion, atteint, surprises, entrants)
         return atteint
 
@@ -181,7 +221,12 @@ class Saison:
             ja, jb, a, b = jb, ja, b, a
         fa = force_effective(ja, self.etats[a], t.surface, tactiques.get(a, "equilibre"), jb)
         fb = force_effective(jb, self.etats[b], t.surface, tactiques.get(b, "equilibre"), ja)
-        res = jouer_match(fa, fb, rng, RETOUR_MOYEN, t.sets_gagnants())
+        contexte = None
+        if self.social:
+            fa, fb, contexte = self._contexte_social(semaine, tour, a, b, fa, fb, cle_rng)
+        res = jouer_match(fa, fb, rng, RETOUR_MOYEN, t.sets_gagnants(),
+                          apres_set=contexte["apres_set"] if contexte else None,
+                          tilt=social.TILT if contexte else 0.0)
         gagnant, perdant = (a, b) if res.vainqueur == 0 else (b, a)
         cinq = t.sets_gagnants() == 3
         sets_g = [(x, y) if gagnant == a else (y, x) for x, y in res.sets]
@@ -201,15 +246,155 @@ class Saison:
         cle = tuple(sorted((gagnant, perdant)))
         h2h = self.face_a_face.get(cle, {cle[0]: 0, cle[1]: 0})
         self.face_a_face[cle] = {**h2h, gagnant: h2h[gagnant] + 1}
-        self.journal["matchs"].append({"semaine": semaine, "tournoi": t.nom, "tour": tour,
+        self.journal["matchs"].append({"semaine": semaine, "jour": self._jour, "tournoi": t.nom, "tour": tour,
                                        "vainqueur": gagnant, "perdant": perdant, "score": score,
                                        "tactiques": {a: tactiques.get(a, "equilibre"),
-                                                     b: tactiques.get(b, "equilibre")}})
+                                                     b: tactiques.get(b, "equilibre")},
+                                       "fatigue_apres": {a: round(self.etats[a].fatigue, 1),
+                                                         b: round(self.etats[b].fatigue, 1)}})
+        if self.social:
+            self._apres_match_social(semaine, t, tour, (a, b), gagnant, res, score, contexte)
         if tour == "F":
             self.journal["finales"].append({"semaine": semaine, "tournoi": t.nom, "a": a, "b": b,
                                             "vainqueur": gagnant, "score": score, "points": res.points,
                                             "sets_gagnants": t.sets_gagnants()})
         return gagnant, score
+
+    # --------------------------------------------------------- couche sociale
+    def _instantane(self, semaine: int) -> None:
+        self.journal["social"].append({"semaine": semaine, "joueurs": {
+            i: {"moral": round(s.moral, 1), "popularite": round(s.popularite, 1),
+                "reputation": round(s.reputation, 1)} for i, s in self.sociaux.items()}})
+
+    def _relation(self, a: str, b: str) -> float:
+        return self.relations.get(tuple(sorted((a, b))), 0.0)
+
+    def _contexte_social(self, semaine, tour, a, b, fa, fb, cle_rng):
+        """Moral, face-à-face et public modifient les forces ; l'arbitre veille au code."""
+        rangs = {i: k + 1 for k, i in enumerate(self.classement())}
+        sa, sb = self.sociaux[a], self.sociaux[b]
+        h2h = self.face_a_face.get(tuple(sorted((a, b))))
+        soutien = social.soutien_public(sa.popularite, sb.popularite, rangs[a], rangs[b])
+        adj_a = social.ajustement(sa, *social.bilan_face_a_face(h2h, a, b), soutien)
+        adj_b = social.ajustement(sb, *social.bilan_face_a_face(h2h, b, a), -soutien)
+        # la confiance v2 (-3..+3) est remplacée par le moral : on retire son effet
+        fa = Force(fa.service + adj_a + 0.005 * self.etats[a].confiance,
+                   fa.retour + adj_a + 0.005 * self.etats[a].confiance)
+        fb = Force(fb.service + adj_b + 0.005 * self.etats[b].confiance,
+                   fb.retour + adj_b + 0.005 * self.etats[b].confiance)
+        rng_arbitre = random.Random(cle_rng + "-arbitre")     # flux séparé : les points ne bougent pas
+        tension = self._relation(a, b) <= -0.3
+        deja = [0, 0]
+        ids = (a, b)
+
+        def apres_set(_n, jeux, _sets):
+            perdant = 0 if jeux[0] < jeux[1] else 1
+            jid = ids[perdant]
+            p = social.proba_incident(self.par_id[jid].personnalite, self.sociaux[jid],
+                                      self.etats[jid].fatigue, max(jeux) >= 7, tension)
+            if deja[perdant]:
+                p = min(0.5, p * social.RECIDIVE)
+            if rng_arbitre.random() < p:
+                nature = social.sanction(deja[perdant])
+                deja[perdant] += 1
+                return [(perdant, nature)]
+            return []
+
+        arbitre = social.ARBITRES[(semaine * 7 + len(self._matchs_semaine)) % len(social.ARBITRES)]
+        return fa, fb, {"apres_set": apres_set, "soutien": soutien, "ajustements": (adj_a, adj_b),
+                        "arbitre": arbitre, "rangs": rangs}
+
+    def _apres_match_social(self, semaine, t, tour, ids, gagnant, res, score, ctx):
+        a, b = ids
+        sanctions = {a: [], b: []}
+        excuses = {a: False, b: False}
+        for fautif_idx, nature, n_set in res.sanctions:
+            jid, adv = ids[fautif_idx], ids[1 - fautif_idx]
+            motif = social.MOTIFS[social.trait(self.par_id[jid].personnalite)]
+            jeux = " ".join(f"{x}-{y}" if fautif_idx == 0 else f"{y}-{x}" for x, y in res.sets[:n_set])
+            reac = agents.reaction_sanction(self.llm, self.par_id[jid], nature, motif, ctx["arbitre"],
+                                            self._nom(adv), jeux, t)
+            sanctions[jid].append(nature)
+            excuses[jid] = excuses[jid] or reac["excuses"]
+            quoi = "avertissement" if nature == "avertissement" else "point de pénalité"
+            self.journal["incidents"].append({
+                "semaine": semaine, "jour": self._jour, "tournoi": t.nom, "tour": tour, "joueur": jid,
+                "adversaire": adv,
+                "set": n_set, "score": jeux, "sanction": nature, "motif": motif,
+                "arbitre": ctx["arbitre"], **reac})
+            self._souvenir(jid, semaine, f"L'arbitre {ctx['arbitre']} m'a infligé un {quoi} pour {motif} "
+                           f"contre {self._nom(adv)} à {t.nom}. J'ai dit : « {reac['sur_le_court']} »", 6)
+            self._souvenir(adv, semaine, f"{self._nom(jid)} a reçu un {quoi} pour {motif} pendant notre "
+                           f"match à {t.nom}.", 4)
+            self.relations[tuple(sorted(ids))] = max(-1.0, self._relation(a, b) - 0.15)
+        rangs = ctx["rangs"]
+        for jid, adv in ((a, b), (b, a)):
+            self.sociaux[jid] = social.apres_match(self.sociaux[jid], self.par_id[jid].personnalite,
+                                                   jid == gagnant, rangs[jid], rangs[adv],
+                                                   sanctions[jid], excuses[jid])
+        m = self.journal["matchs"][-1]
+        m["soutien"] = {a: round(ctx["soutien"], 2), b: round(-ctx["soutien"], 2)}
+        m["mental"] = {a: round(ctx["ajustements"][0] * 100, 2), b: round(ctx["ajustements"][1] * 100, 2)}
+        m["arbitre"] = ctx["arbitre"]
+        m["sanctions"] = [{"joueur": ids[i], "sanction": n, "set": s} for i, n, s in res.sanctions]
+        m["moral_apres"] = {i: round(self.sociaux[i].moral, 1) for i in ids}
+        m["popularite_apres"] = {i: round(self.sociaux[i].popularite, 1) for i in ids}
+        self._matchs_semaine.append({"tour": tour, "jour": self._jour, "vainqueur": gagnant,
+                                     "perdant": b if gagnant == a else a, "score": score,
+                                     "incidents": len(res.sanctions)})
+
+    def _vestiaires(self, semaine: int, t) -> None:
+        """Les matchs les plus chargés (incident, rivalité, finale) donnent un échange aux vestiaires."""
+        def poids(m):
+            h2h = self.face_a_face.get(tuple(sorted((m["vainqueur"], m["perdant"]))), {})
+            return (3 * m["incidents"] + (2 if sum(h2h.values()) >= 3 else 0)
+                    + (1 if m["tour"] == "F" else 0) + abs(self._relation(m["vainqueur"], m["perdant"])))
+        candidats = sorted((m for m in self._matchs_semaine if poids(m) >= 1), key=poids, reverse=True)
+        for m in candidats[:VESTIAIRES_PAR_TOURNOI]:
+            g, p_ = m["vainqueur"], m["perdant"]
+            h2h = self.face_a_face.get(tuple(sorted((g, p_))), {})
+            contexte = [f"{self._nom(g)} bat {self._nom(p_)} {m['score']} en {NOMS_TOURS.get(m['tour'], m['tour'])} "
+                        f"à {t.nom}",
+                        f"face-à-face cette saison : {self._nom(g)} {h2h.get(g, 0)} - {h2h.get(p_, 0)} {self._nom(p_)}"]
+            contexte += [f"incident : {i['joueur'] == g and self._nom(g) or self._nom(p_)} a reçu un "
+                         f"{'avertissement' if i['sanction'] == 'avertissement' else 'point de pénalité'} "
+                         f"({i['motif']})" for i in self.journal["incidents"]
+                         if i["semaine"] == semaine and {i["joueur"], i["adversaire"]} == {g, p_}]
+            rel = self._relation(g, p_)
+            if rel <= -0.3:
+                contexte.append("leurs relations sont tendues depuis plusieurs semaines")
+            elif rel >= 0.3:
+                contexte.append("ils se respectent beaucoup")
+            v = agents.vestiaire(self.llm, self.par_id[g], self.par_id[p_], contexte)
+            delta = {"respect": 0.2, "neutre": 0.0, "tension": -0.3}[v["ton"]]
+            self.relations[tuple(sorted((g, p_)))] = max(-1.0, min(1.0, rel + delta))
+            self.journal["vestiaires"].append({"semaine": semaine, "tournoi": t.nom, "vainqueur": g,
+                                               "jour": m["jour"], "perdant": p_,
+                                               "relation": round(rel + delta, 2), **v})
+            for moi, lui, dit, entendu in ((g, p_, v["replique_vainqueur"], v["replique_perdant"]),
+                                           (p_, g, v["replique_perdant"], v["replique_vainqueur"])):
+                self._souvenir(moi, semaine, f"Aux vestiaires de {t.nom}, j'ai dit à {self._nom(lui)} : « {dit} » "
+                               f"et il m'a répondu : « {entendu} » (ambiance : {v['ton']}).",
+                               6 if v["ton"] == "tension" else 3)
+
+    def _federation(self, semaine: int) -> None:
+        debut = semaine - FEDERATION_SEMAINES + 1
+        par_joueur: dict = {}
+        for i in self.journal["incidents"]:
+            if i["semaine"] >= debut:
+                par_joueur.setdefault(i["joueur"], []).append(i)
+        for jid, liste in sorted(par_joueur.items()):
+            textes = [f"semaine {i['semaine']}, {i['tournoi']} : "
+                      f"{'avertissement' if i['sanction'] == 'avertissement' else 'point de pénalité'} pour "
+                      f"{i['motif']} (arbitre {i['arbitre']}) ; il a dit « {i['sur_le_court']} »"
+                      + (" puis s'est excusé" if i.get("excuses") else "") for i in liste]
+            d = agents.federation(self.llm, self.par_id[jid], textes, self.sociaux[jid].reputation)
+            if d["decision"] == "amende":
+                self.sociaux[jid] = social.amende(self.sociaux[jid], d["montant"])
+                self.etats[jid] = replace(self.etats[jid], gains=self.etats[jid].gains - d["montant"])
+            self.journal["federation"].append({"semaine": semaine, "jour": JOUR_PRESSE, "joueur": jid, "incidents": len(liste), **d})
+            self._souvenir(jid, semaine, f"La fédération a examiné mes incidents : {d['decision']}"
+                           + (f" de {d['montant']} euros" if d["montant"] else "") + f". « {d['communique']} »", 6)
 
     def _presse(self, semaine: int, t, champion: str, atteint: dict, surprises: list, entrants: list):
         finale = next(m for m in reversed(self.journal["matchs"]) if m["tour"] == "F" and m["semaine"] == semaine)
@@ -217,6 +402,19 @@ class Saison:
                  f"en finale, {finale['score']}.",
                  f"Titres cette saison : {self._nom(champion)} en compte {self.titres[champion]}."]
         faits += surprises[:3]
+        if self.social:
+            for i in [i for i in self.journal["incidents"] if i["semaine"] == semaine][:2]:
+                faits.append(f"incident : {self._nom(i['joueur'])} a reçu un "
+                             f"{'avertissement' if i['sanction'] == 'avertissement' else 'point de pénalité'} "
+                             f"pour {i['motif']} contre {self._nom(i['adversaire'])}")
+            for v in [v for v in self.journal["vestiaires"] if v["semaine"] == semaine and v["ton"] == "tension"][:1]:
+                faits.append(f"ambiance froide aux vestiaires entre {self._nom(v['vainqueur'])} et "
+                             f"{self._nom(v['perdant'])}")
+            fin = self.journal["matchs"][-1]
+            if "soutien" in fin:
+                fav = max(fin["soutien"], key=fin["soutien"].get)
+                if abs(fin["soutien"][fav]) >= 0.3:
+                    faits.append(f"le public de la finale soutenait nettement {self._nom(fav)}")
         absents = [self._nom(i) for i in self.classement()[:4] if i not in entrants]
         if absents:
             faits.append("forfaits ou absents parmi le top 4 : " + ", ".join(absents))
@@ -229,7 +427,7 @@ class Saison:
         rep = agents.conference(self.llm, self.par_id[champion], self.etats[champion], art["question"])
         self._souvenir(champion, semaine, f"En conférence de presse, on m'a demandé « {art['question']} » "
                        f"et j'ai répondu : « {rep['reponse']} »", 4, "presse")
-        self.journal["articles"].append({"semaine": semaine, "tournoi": t.nom, "categorie": t.categorie,
+        self.journal["articles"].append({"semaine": semaine, "jour": JOUR_PRESSE, "tournoi": t.nom, "categorie": t.categorie,
                                          "surface": t.surface, "champion": champion, "faits": faits,
                                          **art, "reponse": rep["reponse"],
                                          "revele_blessure": rep.get("revele_blessure", False)})
@@ -241,7 +439,7 @@ class Saison:
             j, e = self.par_id[jid], self.etats[jid]
             sponsor = SPONSORS[(k + semaine) % len(SPONSORS)]
             neg = agents.negociation(self.llm, j, e, self.classement().index(jid) + 1, self.titres[jid], sponsor)
-            neg["semaine"] = semaine
+            neg["semaine"], neg["jour"] = semaine, JOUR_MEDIAS
             self.journal["negociations"].append(neg)
             if neg["contrat"]:
                 self.etats[jid] = replace(e, sponsor=sponsor[0], gains=e.gains + neg["contrat"])
@@ -276,12 +474,20 @@ class Saison:
                 "gains": e.gains, "sponsor": e.sponsor, "matchs": e.matchs, "victoires": e.victoires,
                 "memoire": [{"semaine": s.semaine, "texte": s.texte, "importance": s.importance,
                              "type": s.type} for s in self.memoires[j.id]],
+                **({"social": {"moral": round(self.sociaux[j.id].moral, 1),
+                               "popularite": round(self.sociaux[j.id].popularite, 1),
+                               "reputation": round(self.sociaux[j.id].reputation, 1),
+                               "avertissements": self.sociaux[j.id].avertissements,
+                               "penalites": self.sociaux[j.id].penalites,
+                               "amendes": self.sociaux[j.id].amendes},
+                    "relations": {(k[1] if k[0] == j.id else k[0]): round(v, 2)
+                                  for k, v in self.relations.items() if j.id in k}} if self.social else {}),
             })
         replis = sum(1 for s in self.journal["semaines"] for d in s["decisions"]
                      if d["repli"] or (d["conseil"] and d["conseil"]["repli"]))
         return {"meta": {"graine": self.graine, "semaines": self.semaines, "controle": self.controle,
                          "llm": dict(self.llm.stats), "replis": replis,
-                         "version_prompts": self.version_prompts},
+                         "version_prompts": self.version_prompts, "social": self.social},
                 "joueurs": joueurs,
                 "calendrier": [{"semaine": t.semaine, "nom": t.nom, "surface": t.surface,
                                 "categorie": t.categorie} for t in CALENDRIER if t.semaine <= self.semaines],
