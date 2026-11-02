@@ -1,7 +1,7 @@
 // Écran de contrôle du village 3D : les temps forts de la journée, révélés à leur heure pendant la
 // lecture et classés par intérêt, avec un bouton pour zoomer sur le lieu ; et la grille de tous les
 // agents. Logique d'horaire pure (sans Three.js) ; l'affichage passe par textContent (pas d'injection).
-import {TOURS, nomCourt} from "/village3d_jour.js";
+import {TOURS, nomCourt} from "./village3d_jour.js";
 
 // Une journée de tournoi va de 9 h à 22 h ; f (0 à 1) est l'avancée de la journée.
 export const heureLib = f => {

@@ -32,7 +32,7 @@ function socialA(S, k) {
   return (S.social.filter(x => x.semaine <= k).pop() || S.social[0]).joueurs;
 }
 
-// Vue cumulée (comme le plan 2D), arrêtée à la fin de la semaine k.
+// Vue cumulée, arrêtée à la fin de la semaine k.
 export function vueSemaine(S, k) {
   const pts = classementA(S, k);
   const matchs = S.matchs.filter(m => m.semaine <= k), finales = S.finales.filter(f => f.semaine <= k);

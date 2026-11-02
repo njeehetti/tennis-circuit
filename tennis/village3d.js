@@ -1,16 +1,17 @@
-// Village du circuit en 3D (Three.js), à l'échelle réelle. Lit /etat comme le plan 2D, n'écrit rien.
+// Village du circuit en 3D (Three.js), à l'échelle réelle. Lit /etat (serveur local) ou etat.json
+// (site statique, voir outils/exporter_site.py) ; n'écrit rien.
 // Modules : village3d_decor.js (le complexe), village3d_public.js (spectateurs, fans, écrans),
 // village3d_jour.js (qui est où, jour par jour). Ce fichier : personnages, interface, lecture.
 import * as THREE from "three";
 import {OrbitControls} from "three/addons/controls/OrbitControls.js";
 import {CSS2DRenderer, CSS2DObject} from "three/addons/renderers/CSS2DRenderer.js";
-import {JOURS, TOURS, jourNom, nomCourt, semainesFaites, vueJour, vueSemaine} from "/village3d_jour.js";
-import {NEUTRE, SURFACES, construireDecor} from "/village3d_decor.js";
-import {creerPublic} from "/village3d_public.js";
-import {auMoment, creerControle, creerGrille, horaire, soinsEnCours, tempsForts, texteSante} from "/village3d_controle.js";
-import {creerTableau} from "/village3d_tableau.js";
-import {creerEffets} from "/village3d_effets.js";
-import {blocInterview} from "/village3d_interview.js";
+import {JOURS, TOURS, jourNom, nomCourt, semainesFaites, vueJour, vueSemaine} from "./village3d_jour.js";
+import {NEUTRE, SURFACES, construireDecor} from "./village3d_decor.js";
+import {creerPublic} from "./village3d_public.js";
+import {auMoment, creerControle, creerGrille, horaire, soinsEnCours, tempsForts, texteSante} from "./village3d_controle.js";
+import {creerTableau} from "./village3d_tableau.js";
+import {creerEffets} from "./village3d_effets.js";
+import {blocInterview} from "./village3d_interview.js";
 
 const REDUIT = matchMedia("(prefers-reduced-motion: reduce)").matches;
 // lecture : durée d'une journée, réglée par le curseur « Vitesse » (de 2 min à 6 s par jour)
@@ -43,7 +44,7 @@ try {
   rendu = new THREE.WebGLRenderer({antialias: true});
 } catch (e) {
   $("voile").replaceChildren("Ce navigateur n'affiche pas la 3D (WebGL indisponible).",
-    el("small", {}, el("a", {href: "/"}, "Ouvrir le plan 2D")));
+    el("small", {}, "Essaie un navigateur récent avec l'accélération graphique activée."));
   throw e;
 }
 rendu.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -618,9 +619,12 @@ $("noms").addEventListener("click", () => {
   $("noms").classList.toggle("actif", oui); $("noms").setAttribute("aria-pressed", String(oui));
 });
 
+// site statique : <meta name="etat" content="etat.json"> ; sinon le serveur local
+const SOURCE = document.querySelector('meta[name="etat"]')?.content || "/etat";
+const STATIQUE = SOURCE !== "/etat";
 async function rafraichir() {
   try {
-    const r = await fetch("/etat", {cache: "no-store"});
+    const r = await fetch(SOURCE, {cache: "no-store"});
     if (!r.ok) throw new Error("HTTP " + r.status);
     recu = await r.json();
     if (!enPause && !lecture.actif) { affiche = recu; afficher(); }
@@ -631,7 +635,7 @@ async function rafraichir() {
     if (recu.termine) return;
   } catch (err) {
     $("point").className = "point perdu";
-    $("statut").textContent = "Serveur injoignable : relance python -m tennis.direct";
+    $("statut").textContent = STATIQUE ? "Données de la saison introuvables" : "Serveur injoignable : relance python -m tennis.direct";
   }
   setTimeout(rafraichir, 3000);
 }
@@ -775,7 +779,7 @@ function ficheJoueur(id) {
     social ? ligne("État", texteSante(L.sante) || "aucune blessure") : null,
     j.hygiene ? ligne("Hygiène de vie", j.hygiene) : null,
     d && d.medecin && d.medecin.avis ? citation("Staff médical", `Avis : ${d.medecin.avis}. ${d.medecin.message || ""}`) : null,
-    social ? blocInterview(j, k, V.jour || 1, nomDe(id)) : null]];
+    social && !STATIQUE ? blocInterview(j, k, V.jour || 1, nomDe(id)) : null]];
 }
 function ficheAutre(id) {
   const c = contenuInfobulle(id);

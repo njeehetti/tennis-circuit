@@ -1,0 +1,3 @@
+-r requirements.txt
+pytest>=8
+pillow>=10  # outils/assembler_video.py (animation du README)

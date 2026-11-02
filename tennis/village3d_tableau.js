@@ -1,8 +1,8 @@
 // Tableau du tournoi (huitièmes → finale), rempli au fil de la lecture : un résultat n'apparaît
 // qu'une fois le match terminé à l'horloge ; un match du jour est « en cours » ou « à venir ».
 // Les matchs sont enregistrés dans l'ordre du tableau (moitié haute d'abord) par tennis/saison.py.
-import {TOURS, jourDe} from "/village3d_jour.js";
-import {heureLib, horaire} from "/village3d_controle.js";
+import {TOURS, jourDe} from "./village3d_jour.js";
+import {heureLib, horaire} from "./village3d_controle.js";
 
 const ORDRE = ["R16", "QF", "SF", "F"];
 const COURTS_DU_JOUR = {R16: ["central", "sf", "qf", "r16a", "r16b"], QF: ["central", "sf"], SF: ["central", "sf"], F: ["central"]};

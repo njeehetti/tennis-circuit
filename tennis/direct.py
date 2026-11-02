@@ -1,7 +1,7 @@
 """Suivi en direct d'une saison en cours (lecture seule, aucune dépendance).
 
 python -m tennis.direct [--nom saison_v2_g1] [--port 8765]
-puis ouvrir http://127.0.0.1:8765
+puis ouvrir http://127.0.0.1:8765 (le village 3D)
 
 Le serveur ne fait que lire les fichiers que la simulation écrit déjà :
 `runs/<nom>/saison.json` (réécrit à chaque fin de semaine), `runs/<nom>/llm.jsonl`
@@ -174,11 +174,9 @@ def creer_serveur(dossier: Path, port: int, llm_interview=None) -> ThreadingHTTP
 
         def do_GET(self):  # noqa: N802 (nom imposé par http.server)
             chemin = self.path.split("?", 1)[0]
-            if chemin in ("/", "/index.html"):
-                self._envoyer(200, (ici / "direct.html").read_bytes(), "text/html; charset=utf-8")
-            elif chemin == "/scene.js":
-                self._envoyer(200, (ici / "scene.js").read_bytes(), "text/javascript; charset=utf-8")
-            elif chemin in ("/3d", "/3d/"):
+            if chemin.startswith("/3d/"):          # ancienne adresse du village : mêmes fichiers
+                chemin = chemin[3:]
+            if chemin in ("/", "/index.html", "/3d"):
                 self._envoyer(200, (ici / "village3d.html").read_bytes(), "text/html; charset=utf-8")
             elif chemin in MODULES_3D:
                 self._envoyer(200, (ici / chemin[1:]).read_bytes(), "text/javascript; charset=utf-8")

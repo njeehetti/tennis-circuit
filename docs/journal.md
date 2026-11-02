@@ -332,3 +332,28 @@ entre joueurs, temps consacré aux médias (réputation et moral), fans,
 intensité d'entraînement comme décision du joueur. Chacune change
 l'espace de décision du LLM ; la règle fixe devra recevoir une règle
 équivalente pour garder la comparaison équitable.
+
+### Dépôt GitHub, site statique, fin de la 2D (demande de Njee)
+
+Demande : « On peut oublier la version 2D maintenant, elle est dépassée »,
+puis « préparer un repo github avec une vidéo animée pour le README et une
+page de déploiement ».
+
+- **2D retirée** (`direct.html`, `scene.js`, toujours dans l'historique git) :
+  le village 3D est servi sur `/` ; `/3d` reste accepté.
+- **Chemins relatifs** dans les modules du village, pour qu'il marche aussi
+  dans un sous-dossier (GitHub Pages sert `utilisateur.github.io/depot/`).
+- **Mode statique** : une balise `<meta name="etat" content="etat.json">`
+  remplace le serveur ; `outils/exporter_site.py` écrit `site/` à partir
+  d'une saison **terminée** (refus sinon). Les interviews sont masquées en
+  ligne : elles demandent le LLM local.
+- **Déploiement** : workflow `pages.yml` (publie `site/` à chaque
+  modification) et `tests.yml` (pytest avec le faux LLM, syntaxe des
+  modules JS). Rien n'est poussé : le dépôt distant reste à créer.
+- **Animation du README** : WebP animé plutôt que vidéo MP4, car GitHub
+  n'affiche une vidéo dans un README que si elle est déposée via
+  l'interface web. Enregistrement par le flux d'images de Chrome (CDP,
+  Playwright) en fenêtre visible (GPU) ; assemblage à cadence fixe avec
+  Pillow.
+- **Licence** : MIT pour le code (mon choix, à confirmer) ; les gabarits
+  restent sous CC BY-NC-SA 4.0.

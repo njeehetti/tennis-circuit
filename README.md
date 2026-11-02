@@ -1,5 +1,12 @@
 # Circuit de tennis multi-agents LLM
 
+<p align="center">
+  <img src="docs/demo.webp" alt="Le village 3D pendant une finale : le tableau du tournoi se remplit, la caméra suit les temps forts" width="900">
+</p>
+
+<p align="center"><b><a href="https://njeehetti.github.io/tennis-circuit/">Voir une saison dans le navigateur</a></b>
+(village 3D, aucune installation ; les interviews demandent la version locale)</p>
+
 Une saison de tennis **fictive**, simulée semaine par semaine, où joueurs,
 entraîneurs, agents sportifs, sponsors et journalistes sont des **agents LLM**
 locaux (Ollama, `qwen3:8b`). Les matchs, eux, ne sont pas joués par le LLM :
@@ -115,7 +122,7 @@ vrai joueur ne parle. Voir `data/LICENCE-DONNEES.md`.
 
 ```bash
 py -3.12 -m venv .venv
-.venv\Scripts\python -m pip install requests pytest
+.venv\Scripts\python -m pip install -r requirements-dev.txt
 ollama pull qwen3:8b
 
 # une saison avec le LLM et la couche sociale (≈ 290 appels, ≈ 25 min sur une RTX 4070 portable)
@@ -147,16 +154,13 @@ Pendant qu'une saison tourne, dans un second terminal :
 .venv\Scripts\python -m tennis.direct --nom saison_v2_g1
 ```
 
-puis ouvrir <http://127.0.0.1:8765>. La page se met à jour toutes les
-3 secondes : semaine en cours et temps restant estimé, chaque décision du
-LLM à l'instant où il répond (joueur, entraîneur, réflexion, presse,
-négociation), classement provisoire, duels de jumeaux LLM / règle fixe,
-décisions et raisonnements de la dernière semaine, articles. Le serveur ne
-fait que **lire** `llm.jsonl` et `saison.json` : on peut l'arrêter et le
-relancer sans gêner la simulation. Il n'écoute que sur `127.0.0.1`.
+puis ouvrir <http://127.0.0.1:8765> : le **village en 3D**. La page relit la
+saison toutes les 3 secondes et montre chaque décision du LLM à l'instant
+où il répond. Le serveur ne fait que **lire** `llm.jsonl` et `saison.json` :
+on peut l'arrêter et le relancer sans gêner la simulation. Il n'écoute que
+sur `127.0.0.1`.
 
-Le même serveur sert aussi le **village en 3D** sur <http://127.0.0.1:8765/3d>
-(Three.js chargé depuis jsDelivr, il faut donc Internet et WebGL). C'est un
+Le village (Three.js chargé depuis jsDelivr, il faut donc Internet et WebGL). C'est un
 complexe de tournoi à l'échelle réelle (1 unité = 1 m, courts de
 23,77 × 10,97 m) : court central dans une cuvette de 18 rangées, Courts 1
 et 2, deux courts annexes, deux courts d'entraînement, centre des joueurs
@@ -184,7 +188,7 @@ un joueur se blesse, et des confettis tombent sur le central à la fin de
 la finale. Survoler un personnage ou son nom affiche une
 infobulle (rang, activité du jour, jauges) ; un clic ouvre sa fiche (courbe du moral et de la popularité, sanctions,
 relations aux vestiaires, décisions de la fédération, santé et avis
-médical). Le plan 2D reste disponible sur `/`.
+médical).
 
 **Interviews.** La fiche d'un joueur permet de lui poser une question :
 le LLM local répond dans sa peau, avec ce qu'il sait au jour affiché
@@ -199,6 +203,24 @@ Leçons tirées d'un portage de *Generative Agents* sur petits modèles
 locaux : sortie JSON forcée et raisonnement désactivé, validation des clés,
 rapprochement des valeurs hors liste, une relance, puis **repli
 déterministe** marqué dans les données (jamais de plantage de saison).
+
+### Site statique et animation du README
+
+Une saison terminée s'exporte en site statique (le village 3D et un
+`etat.json`), publié par GitHub Pages à chaque modification de `site/` :
+
+```bash
+.venv\Scripts\python outils/exporter_site.py --nom saison_v3_g1      # écrit site/
+```
+
+L'animation `docs/demo.webp` s'enregistre depuis le serveur local
+(Playwright, puis Pillow) :
+
+```bash
+.venv\Scripts\python -m tennis.direct --nom saison_v3_g1             # terminal 1
+node outils/video.mjs --semaine 6 --sortie %TEMP%\frames              # terminal 2
+.venv\Scripts\python outils/assembler_video.py --images %TEMP%\frames --sortie docs/demo.webp
+```
 
 ## Structure
 
@@ -217,10 +239,11 @@ tennis/
   social.py     moral, popularité, réputation, arbitres, sanctions
   blessures.py  blessures, chroniques, hygiène de vie, soins
   interview.py  interviews d'un joueur depuis la vue 3D
-  direct.py     suivi en direct (serveur local + direct.html)
+  direct.py     suivi en direct (serveur local du village 3D, interviews)
   village3d*.js village 3D : décor, public, jour par jour, écran de contrôle, tableau,
                 interview, effets (kiné, confettis), personnages
-outils/         expérience multi-graines, téléchargement des données
+outils/         expérience multi-graines, données, export du site, vidéo du README
+site/           saison exportée, publiée sur GitHub Pages
 docs/           document de conception et journal des choix
 tests/          pytest (faux LLM : aucun appel réseau)
 ```

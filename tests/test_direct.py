@@ -58,7 +58,7 @@ def test_serveur_sert_page_et_etat_d_une_vraie_saison(tmp_path):
     base = f"http://127.0.0.1:{serveur.server_address[1]}"
     try:
         page = urllib.request.urlopen(base + "/").read().decode("utf-8")
-        assert "Village du circuit" in page and "textContent" in page
+        assert "Village 3D du circuit" in page and './village3d.js' in page
         e = json.loads(urllib.request.urlopen(base + "/etat").read())
         assert e["termine"] and len(e["saison"]["joueurs"]) == 16
         try:
@@ -95,12 +95,14 @@ def test_sauvegarde_finale_sans_champ_partiel_est_terminee(tmp_path):
     assert e["termine"] and e["semaines_faites"] == 2 and e["semaine_courante"] == []
 
 
-def test_scene_servie(tmp_path):
+def test_ancienne_adresse_3d_et_modules_relatifs(tmp_path):
     serveur = creer_serveur(tmp_path, 0)
     threading.Thread(target=serveur.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{serveur.server_address[1]}"
     try:
-        js = urllib.request.urlopen(f"http://127.0.0.1:{serveur.server_address[1]}/scene.js").read()
-        assert b"function rendreScene" in js
+        assert b"Village 3D" in urllib.request.urlopen(base + "/3d/").read()
+        # page ouverte sur /3d/ : les imports relatifs pointent vers /3d/village3d_*.js
+        assert b"export function vueJour" in urllib.request.urlopen(base + "/3d/village3d_jour.js").read()
     finally:
         serveur.shutdown()
         serveur.server_close()
