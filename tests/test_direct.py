@@ -69,3 +69,39 @@ def test_serveur_sert_page_et_etat_d_une_vraie_saison(tmp_path):
     finally:
         serveur.shutdown()
         serveur.server_close()
+
+
+def test_semaine_courante_depuis_la_derniere_sauvegarde(tmp_path):
+    d = tmp_path / "s"
+    d.mkdir()
+    lignes = [json.loads(_appel("joueur", {"jouer": i % 2 == 0, "entrainement": "repos",
+                                           "raisonnement": str(i)})) for i in range(5)]
+    for i, l in enumerate(lignes):
+        l["sujet"] = f"J0{i}"
+    (d / "llm.jsonl").write_text("".join(json.dumps(l) + "\n" for l in lignes), encoding="utf-8")
+    (d / "saison.json").write_text(json.dumps({"meta": {"semaines": 12, "llm": {"appels": 3}},
+                                               "partiel": True, "semaine_atteinte": 1}), encoding="utf-8")
+    e = etat(d)
+    assert [a["sujet"] for a in e["semaine_courante"]] == ["J03", "J04"]
+    assert e["dernier_appel_il_y_a_s"] is not None and e["dernier_appel_il_y_a_s"] < 60
+
+
+def test_sauvegarde_finale_sans_champ_partiel_est_terminee(tmp_path):
+    d = tmp_path / "s"
+    d.mkdir()
+    (d / "saison.json").write_text(json.dumps({"meta": {"semaines": 2}, "semaines": [{}, {}]}),
+                                   encoding="utf-8")
+    e = etat(d)
+    assert e["termine"] and e["semaines_faites"] == 2 and e["semaine_courante"] == []
+
+
+def test_scene_servie(tmp_path):
+    serveur = creer_serveur(tmp_path, 0)
+    threading.Thread(target=serveur.serve_forever, daemon=True).start()
+    try:
+        js = urllib.request.urlopen(f"http://127.0.0.1:{serveur.server_address[1]}/scene.js").read()
+        assert b"function rendreScene" in js
+    finally:
+        serveur.shutdown()
+        serveur.server_close()
+

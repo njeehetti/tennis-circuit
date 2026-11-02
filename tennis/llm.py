@@ -30,7 +30,9 @@ class ClientOllama:
             with open(self.journal, "a", encoding="utf-8") as f:
                 f.write(json.dumps(ligne, ensure_ascii=False) + "\n")
 
-    def json(self, role: str, systeme: str, utilisateur: str, cles: tuple) -> dict | None:
+    def json(self, role: str, systeme: str, utilisateur: str, cles: tuple,
+             sujet: str = "") -> dict | None:
+        """`sujet` : id du joueur concerné, écrit dans le journal (suivi en direct)."""
         for essai in range(2):
             debut = time.time()
             texte, erreur = "", ""
@@ -54,7 +56,7 @@ class ClientOllama:
             duree = time.time() - debut
             self.stats["appels"] += 1
             self.stats["secondes"] += duree
-            self._log({"role": role, "essai": essai, "ok": donnees is not None,
+            self._log({"role": role, "sujet": sujet, "essai": essai, "ok": donnees is not None,
                        "duree": round(duree, 2), "erreur": erreur,
                        "prompt": utilisateur[-1500:], "reponse": texte[:1500]})
             if donnees is not None:
@@ -70,7 +72,8 @@ class FauxLLM:
         self.stats = {"appels": 0, "echecs": 0, "secondes": 0.0}
         self.n = 0
 
-    def json(self, role: str, systeme: str, utilisateur: str, cles: tuple) -> dict | None:
+    def json(self, role: str, systeme: str, utilisateur: str, cles: tuple,
+             sujet: str = "") -> dict | None:
         self.stats["appels"] += 1
         self.n += 1
         fatigue_haute = any(f"fatigue : {k}/10" in utilisateur for k in (7, 8, 9, 10))

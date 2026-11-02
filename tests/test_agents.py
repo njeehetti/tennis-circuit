@@ -93,7 +93,7 @@ class Capture:
     def __init__(self, rep):
         self.rep, self.prompts = rep, []
 
-    def json(self, role, systeme, prompt, cles):
+    def json(self, role, systeme, prompt, cles, sujet=""):
         self.prompts.append(prompt)
         return self.rep
 

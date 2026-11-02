@@ -138,3 +138,40 @@ saison, donc utilisable sur la saison qui tournait à ce moment-là).
   Piste : ajouter le joueur concerné dans le journal LLM pour les saisons
   suivantes.
 - Temps restant estimé avec ≈ 23 appels par semaine (mesuré en v1).
+
+### Vue « complexe » avec personnages, pause et archive (demande de Njee)
+
+Consignes : « un grand circuit de tennis avec des petits bonhommes
+représentant chaque agent sur lequel tu pouvais cliquer pour voir son statut
+etc en info bulle », puis « un bouton pause, pour consulter l'état figé de
+tous les agents sur un moment précis de la saison ».
+
+- `tennis/scene.js` : plan SVG du complexe (4 courts + court central, couleur
+  de la surface du tournoi ; vestiaires, salles d'entraînement, repos,
+  infirmerie, presse, sponsors). Un personnage par joueur (même maillot pour
+  deux jumeaux, antenne verte pour le LLM, jauge de fatigue, croix si
+  blessé, trophée), un entraîneur à casquette à côté de chaque joueur LLM,
+  journaliste, agent, sponsor. Clic = fiche complète. Bulle « vient de
+  répondre » au-dessus de l'agent concerné pendant une saison en cours.
+- [choix Claude] Placement : le court dépend du tour atteint la semaine
+  affichée (finale au central, demies court 1, quarts court 2, premier tour
+  courts 3-4) ; sans tournoi, la salle dépend de l'entraînement choisi.
+- Pause : l'affichage se fige, la simulation continue (compteur des
+  décisions arrivées entre-temps). Curseur : état de tous les agents à la fin
+  de n'importe quelle semaine (points, bilan, fatigue, leçons, articles,
+  contrats recalculés à cette date).
+- Le journal LLM note désormais le joueur concerné (`sujet`) : la bulle et
+  les décisions de la semaine en cours ne marchent qu'à partir des saisons
+  lancées après ce changement (pas pour `saison_v2_g1`).
+- Corrigé : la sauvegarde finale n'a pas de champ `partiel`, la page ne
+  voyait jamais la saison comme terminée.
+
+## Saison v2, graine 1 : terminée (21 min, 270 appels, 0 échec, 0 repli)
+
+- Écart moyen LLM − règle : +268 points (écart-type 655 entre paires) ;
+  le LLM fait mieux dans 5 paires sur 8. Une saison ne suffit pas (bruit).
+- « physique » n'est plus jamais choisi (v1 : 40/65) : l'ambiguïté est levée.
+- Nouveau biais : **0 repos et 0 forfait** sur 72 semaines de tournoi ;
+  Okonkwo est à 9/10 de fatigue dès la semaine 4. Le LLM sur-joue.
+- Entraîneurs : `pression_retour` 51, `service_agressif` 21 ; toujours
+  aucun désaccord avec le joueur.

@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import statistics
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -55,7 +56,8 @@ def _resume_appel(a: dict) -> dict:
     if not isinstance(rep, dict):
         rep = {}
     champs = {k: rep[k] for k in CHAMPS.get(a.get("role"), ()) if k in rep}
-    return {"role": a.get("role", "?"), "ok": bool(a.get("ok")), "duree": a.get("duree", 0),
+    return {"role": a.get("role", "?"), "sujet": a.get("sujet", ""),
+            "ok": bool(a.get("ok")), "duree": a.get("duree", 0),
             "erreur": a.get("erreur", ""), "champs": champs}
 
 
@@ -85,9 +87,15 @@ def etat(dossier: Path, cache: dict | None = None) -> dict:
         cache["saison"] = saison
     durees = [a.get("duree", 0) for a in appels if a.get("ok")]
     total = (saison or {}).get("meta", {}).get("semaines", 12)
-    faites = (saison or {}).get("semaine_atteinte", 0)
-    termine = saison is not None and saison.get("partiel") is False
+    # la sauvegarde finale n'a ni « partiel » ni « semaine_atteinte »
+    faites = (saison or {}).get("semaine_atteinte", len((saison or {}).get("semaines", [])))
+    termine = saison is not None and not saison.get("partiel", False) and faites >= total
     moy = statistics.mean(durees) if durees else 0.0
+    # Appels faits depuis la dernière sauvegarde = semaine en cours (le compteur
+    # meta.llm.appels compte chaque essai, comme les lignes du journal).
+    depuis = (saison or {}).get("meta", {}).get("llm", {}).get("appels", 0)
+    journal = dossier / "llm.jsonl"
+    age = time.time() - journal.stat().st_mtime if journal.exists() else None
     restant = 0 if termine else max(0, (total - faites) * APPELS_PAR_SEMAINE * moy)
     return {
         "dossier": dossier.name,
@@ -100,6 +108,8 @@ def etat(dossier: Path, cache: dict | None = None) -> dict:
         "duree_moyenne": round(moy, 1),
         "restant_s": round(restant),
         "derniers": [_resume_appel(a) for a in appels[-DERNIERS_APPELS:]][::-1],
+        "semaine_courante": [] if termine else [_resume_appel(a) for a in appels[depuis:]],
+        "dernier_appel_il_y_a_s": None if age is None else round(age, 1),
         "saison": saison,
         "tableau": (dossier / "tableau_de_bord.html").exists(),
     }
@@ -114,7 +124,7 @@ def dossier_le_plus_recent(racine: Path) -> Path:
 
 def creer_serveur(dossier: Path, port: int) -> ThreadingHTTPServer:
     cache: dict = {}
-    page = (Path(__file__).with_name("direct.html")).read_bytes()
+    ici = Path(__file__).parent      # relus à chaque requête : on peut modifier la page à chaud
 
     class Gestionnaire(BaseHTTPRequestHandler):
         def _envoyer(self, code: int, corps: bytes, type_: str) -> None:
@@ -128,7 +138,9 @@ def creer_serveur(dossier: Path, port: int) -> ThreadingHTTPServer:
         def do_GET(self):  # noqa: N802 (nom imposé par http.server)
             chemin = self.path.split("?", 1)[0]
             if chemin in ("/", "/index.html"):
-                self._envoyer(200, page, "text/html; charset=utf-8")
+                self._envoyer(200, (ici / "direct.html").read_bytes(), "text/html; charset=utf-8")
+            elif chemin == "/scene.js":
+                self._envoyer(200, (ici / "scene.js").read_bytes(), "text/javascript; charset=utf-8")
             elif chemin == "/etat":
                 corps = json.dumps(etat(dossier, cache), ensure_ascii=False).encode("utf-8")
                 self._envoyer(200, corps, "application/json; charset=utf-8")

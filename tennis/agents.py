@@ -158,7 +158,7 @@ def decision_joueur(llm, j: Joueur, e: Etat, semaine: int, tournoi: Tournoi | No
         '"entrainement": "service" | "retour" | "physique" | "repos", '
         '"raisonnement": "une ou deux phrases à la première personne"}'
     )
-    rep = llm.json("joueur", SYSTEME, prompt, ("jouer", "entrainement", "raisonnement"))
+    rep = llm.json("joueur", SYSTEME, prompt, ("jouer", "entrainement", "raisonnement"), sujet=j.id)
     if rep is None:
         base = decision_baseline(e, tournoi, semaine)
         return Decision(base.jouer, base.entrainement, "(repli : réponse LLM invalide)", True)
@@ -198,7 +198,7 @@ def conseil_entraineur(llm, nom_coach: str, perso_coach: str, j: Joueur, e: Etat
         'Réponds en JSON : {"tactique": "...", "recommande_jouer": true ou false, '
         '"conseil": "une ou deux phrases adressées au joueur"}'
     )
-    rep = llm.json("entraineur", SYSTEME, prompt, ("tactique", "conseil"))
+    rep = llm.json("entraineur", SYSTEME, prompt, ("tactique", "conseil"), sujet=j.id)
     if rep is None:
         return "equilibre", "", True, True
     tac, exact = choisir(rep.get("tactique"), TACTIQUES, "equilibre")
@@ -214,7 +214,7 @@ def reflexion(llm, j: Joueur, souvenirs: str, semaine: int) -> tuple:
         "adversaires, mental). Réponds en JSON : "
         '{"lecon": "une phrase à la première personne", "importance": entier de 1 à 10}'
     )
-    rep = llm.json("reflexion", SYSTEME, prompt, ("lecon",))
+    rep = llm.json("reflexion", SYSTEME, prompt, ("lecon",), sujet=j.id)
     if rep is None:
         return None, 0
     imp = max(1, min(10, entier_sur(rep.get("importance"), 5)))
@@ -231,7 +231,8 @@ def article(llm, tournoi: Tournoi, faits: list, vainqueur: Joueur) -> dict:
         f"les surprises, et une question piquante pour la conférence de presse de {vainqueur.nom}. "
         'Réponds en JSON : {"titre": "...", "article": "...", "question": "..."}'
     )
-    rep = llm.json("journaliste", SYSTEME, prompt, ("titre", "article", "question"))
+    rep = llm.json("journaliste", SYSTEME, prompt, ("titre", "article", "question"),
+                   sujet=vainqueur.id)
     if rep is None:
         return {"titre": f"{vainqueur.nom} remporte {tournoi.nom}", "article": " ".join(faits[:3]),
                 "question": "Comment abordez-vous la suite de la saison ?", "repli": True}
@@ -245,7 +246,7 @@ def conference(llm, j: Joueur, e: Etat, question: str) -> dict:
         "Réponds comme le personnage. Si tu es blessé, tu choisis de le révéler ou de le cacher. "
         'Réponds en JSON : {"reponse": "deux phrases maximum", "revele_blessure": true ou false}'
     )
-    rep = llm.json("conference", SYSTEME, prompt, ("reponse",))
+    rep = llm.json("conference", SYSTEME, prompt, ("reponse",), sujet=j.id)
     if rep is None:
         return {"reponse": "Pas de commentaire.", "revele_blessure": False, "repli": True}
     return {"reponse": str(rep["reponse"])[:400],
@@ -267,7 +268,7 @@ def negociation(llm, j: Joueur, e: Etat, rang: int, titres: int, sponsor: tuple,
             f"Historique :\n{hist}\nFais ta proposition (en euros). "
             'Réponds en JSON : {"montant": entier, "argument": "une phrase"}'
         )
-        rep_a = llm.json("agent", SYSTEME, p_agent, ("montant", "argument"))
+        rep_a = llm.json("agent", SYSTEME, p_agent, ("montant", "argument"), sujet=j.id)
         if rep_a is None:
             break
         demande = entier_sur(rep_a["montant"], -1)
@@ -281,7 +282,7 @@ def negociation(llm, j: Joueur, e: Etat, rang: int, titres: int, sponsor: tuple,
             f"Joueur : {j.nom}, {bilan}. Historique :\n{hist}\nDécide. Réponds en JSON : "
             '{"decision": "accepter" | "contre" | "refuser", "montant": entier, "message": "une phrase"}'
         )
-        rep_s = llm.json("sponsor", SYSTEME, p_sponsor, ("decision", "montant"))
+        rep_s = llm.json("sponsor", SYSTEME, p_sponsor, ("decision", "montant"), sujet=j.id)
         if rep_s is None:
             break
         decision, _ = choisir(rep_s.get("decision"), ("accepter", "contre", "refuser"), "refuser")
