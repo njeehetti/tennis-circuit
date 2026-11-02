@@ -355,5 +355,6 @@ page de déploiement ».
   l'interface web. Enregistrement par le flux d'images de Chrome (CDP,
   Playwright) en fenêtre visible (GPU) ; assemblage à cadence fixe avec
   Pillow.
-- **Licence** : MIT pour le code (mon choix, à confirmer) ; les gabarits
-  restent sous CC BY-NC-SA 4.0.
+- **Licence** : tous droits réservés, à la demande de Njee (« je veux pas
+  qu'on reprenne mon projet ») ; la MIT proposée d'abord autorisait toute
+  réutilisation. Les gabarits restent sous CC BY-NC-SA 4.0.

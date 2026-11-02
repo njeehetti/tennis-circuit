@@ -247,3 +247,8 @@ site/           saison exportée, publiée sur GitHub Pages
 docs/           document de conception et journal des choix
 tests/          pytest (faux LLM : aucun appel réseau)
 ```
+
+## Licence
+
+Tous droits réservés (voir `LICENSE`) : le code est public pour être lu,
+pas pour être repris. Les gabarits de `data/` restent sous CC BY-NC-SA 4.0.
