@@ -258,9 +258,12 @@ tennis/
                 interview, effets (kiné, confettis), personnages
 outils/         expérience multi-graines, données, export du site, vidéo du README
 site/           saison exportée, publiée sur GitHub Pages
-docs/           document de conception et journal des choix
+docs/           conception, architecture du code, journal des choix
 tests/          pytest (faux LLM : aucun appel réseau)
 ```
+
+Fonctionnement détaillé du code (flux des données, étapes d'une semaine,
+mémoire, modules du village 3D) : [`docs/architecture.md`](docs/architecture.md).
 
 ## Licence
 
