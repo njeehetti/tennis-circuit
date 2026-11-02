@@ -136,7 +136,7 @@ export function vueJour(S, k, d) {
       }
     }
     if (jourDe(v) === jour) {
-      evenements.push({type: v.ton === "tension" ? "tension" : "vestiaire", qui: v.perdant,
+      evenements.push({type: v.ton === "tension" ? "tension" : "vestiaire", qui: v.perdant, lieu: "vestiaires",
         texte: `Vestiaires, ambiance ${v.ton} : ${court(v.vainqueur)} « ${v.replique_vainqueur} » ; ${court(v.perdant)} « ${v.replique_perdant} »`});
     }
   }
@@ -144,12 +144,13 @@ export function vueJour(S, k, d) {
     const L = lieux.get(i.joueur);
     const quoi = i.sanction === "avertissement" ? "Avertissement" : "Point de pénalité";
     if (L) { L.carton = i.sanction; L.bulle = {role: `${quoi} (${i.arbitre})`, texte: i.sur_le_court || i.motif}; }
-    evenements.push({type: "incident", qui: i.joueur,
+    evenements.push({type: "incident", qui: i.joueur, lieu: L && L.match ? L.match.court : L ? L.lieu : null,
+      match: L ? L.match : null, set: i.set, sanction: i.sanction,
       texte: `${quoi} pour ${court(i.joueur)} (${i.motif}), set ${i.set}, arbitre ${i.arbitre}${i.sur_le_court ? ` : « ${i.sur_le_court} »` : ""}${i.excuses ? ", excuses ensuite" : ""}`});
   }
   for (const m of matchs) {
     const pub = Math.abs(m.soutienA) >= 0.3 ? `, public pour ${court(m.soutienA > 0 ? m.a : m.b)}` : "";
-    evenements.unshift({type: "match", qui: m.a,
+    evenements.unshift({type: "match", qui: m.a, lieu: m.court, match: m,
       texte: `${TOURS[m.tour].replace(/^./, c => c.toUpperCase())}, ${nomCourt(m.court)} : ${court(m.a)} bat ${court(m.b)} ${m.score}${pub}`});
   }
   const figurants = {};
@@ -158,7 +159,7 @@ export function vueJour(S, k, d) {
       const L = lieux.get(n.joueur);
       if (L && !L.match) { L.lieu = "sponsors"; L.activite = `négocie avec ${n.sponsor}`; }
       const fin = n.echanges[n.echanges.length - 1];
-      evenements.push({type: "sponsor", qui: n.joueur, texte: n.contrat
+      evenements.push({type: "sponsor", qui: n.joueur, lieu: "sponsors", contrat: !!n.contrat, texte: n.contrat
         ? `${court(n.joueur)} signe avec ${n.sponsor} : ${n.contrat.toLocaleString("fr-FR")} €`
         : `${court(n.joueur)} et ${n.sponsor} ne trouvent pas d'accord`});
       if (fin) figurants[fin.qui === "agent" ? "agent" : "sponsor"] = {role: fin.qui === "agent" ? "Agent" : n.sponsor, texte: fin.texte};
@@ -168,7 +169,7 @@ export function vueJour(S, k, d) {
     figurants.journaliste = {role: "Le Filet", texte: article.titre};
     const L = lieux.get(article.champion);
     if (L) L.bulle = {role: "Conférence de presse", texte: article.reponse};
-    evenements.push({type: "presse", qui: article.champion, texte: `Le Filet : « ${article.titre} »`});
+    evenements.push({type: "presse", qui: article.champion, lieu: "presse", texte: `Le Filet : « ${article.titre} »`});
   }
   if (jour === 7 && federation.length) {
     const f = federation[federation.length - 1];
@@ -176,7 +177,7 @@ export function vueJour(S, k, d) {
     for (const x of federation) {
       const L = lieux.get(x.joueur);
       if (L && !L.match && !L.coupe) { L.lieu = "federation"; L.activite = "convoqué par la commission de discipline"; }
-      evenements.push({type: "federation", qui: x.joueur, texte: `Fédération : ${x.decision}${x.montant ? ` de ${x.montant.toLocaleString("fr-FR")} €` : ""} pour ${court(x.joueur)}. « ${x.communique} »`});
+      evenements.push({type: "federation", qui: x.joueur, lieu: "federation", texte: `Fédération : ${x.decision}${x.montant ? ` de ${x.montant.toLocaleString("fr-FR")} €` : ""} pour ${court(x.joueur)}. « ${x.communique} »`});
     }
   }
   if (!tournoi) evenements.push({type: "info", texte: "Pas de tournoi : les joueurs s'entraînent ou récupèrent."});

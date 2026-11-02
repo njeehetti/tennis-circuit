@@ -7,9 +7,11 @@ import {CSS2DRenderer, CSS2DObject} from "three/addons/renderers/CSS2DRenderer.j
 import {JOURS, TOURS, jourNom, nomCourt, semainesFaites, vueJour, vueSemaine} from "/village3d_jour.js";
 import {NEUTRE, SURFACES, construireDecor} from "/village3d_decor.js";
 import {creerPublic} from "/village3d_public.js";
+import {creerControle, creerGrille, horaire, tempsForts} from "/village3d_controle.js";
 
 const REDUIT = matchMedia("(prefers-reduced-motion: reduce)").matches;
-const DUREE_JOUR = 5000;            // lecture : 5 s par jour
+// lecture : durée d'une journée, réglée par le curseur « Vitesse » (de 2 min à 6 s par jour)
+const VITESSES = [120, 80, 50, 30, 20, 12, 6];
 const TAILLE = 0.62;                // figurines : ~1,83 m
 const $ = id => document.getElementById(id);
 function el(tag, attrs, ...enfants) {            // texte via textContent : pas d'injection
@@ -96,8 +98,10 @@ const G = {
   manche: new THREE.CylinderGeometry(0.035, 0.035, 0.5, 6), cadre: new THREE.TorusGeometry(0.3, 0.04, 6, 16),
   cordage: new THREE.CircleGeometry(0.28, 14), balleIA: new THREE.SphereGeometry(0.3, 16, 12),
   couture: new THREE.TorusGeometry(0.3, 0.025, 4, 24), anneau: new THREE.RingGeometry(0.75, 1.0, 28),
-  choix: new THREE.RingGeometry(0.75, 0.92, 32),
+  choix: new THREE.RingGeometry(0.75, 0.92, 32), zone: new THREE.CylinderGeometry(1.3, 1.3, 3.4, 8),
 };
+// zone de survol plus large que la silhouette : invisible, mais touchée par le rayon
+const MAT_ZONE = new THREE.MeshBasicMaterial({visible: false});
 const MAT_OEIL = new THREE.MeshBasicMaterial({color: 0x1d1d1d});
 const MAT_IA = new THREE.MeshStandardMaterial({color: 0xd9f24a, emissive: 0xb7d82a, emissiveIntensity: 0.6, roughness: 0.5});
 const MAT_COUTURE = new THREE.MeshBasicMaterial({color: 0xffffff});
@@ -155,8 +159,15 @@ function css2d(div, y, parent) {
 }
 function enregistrer(id, f, type, texte, ia) {
   const p = {id, type, ...f, pos: f.racine.position, chemin: [], delai: 0, phase: Math.random() * 6, face: 0, place: false, lieu: null, vitesse: 6};
+  const zone = new THREE.Mesh(G.zone, MAT_ZONE);
+  zone.position.y = 1.7; f.racine.add(zone);
   f.racine.traverse(o => { if (o.isMesh) { o.userData.perso = id; cliquables.push(o); } });
   p.nom = el("div", {class: "nom3d" + (ia ? " ia" : "") + (type === "coach" || type === "arbitre" ? " coach" : "")}, texte);
+  // l'étiquette du nom réagit elle aussi : survol = infobulle, clic = fiche
+  p.nom.addEventListener("pointerenter", ev => survoler(id, ev));
+  p.nom.addEventListener("pointermove", ev => montrerInfobulle(id, ev.clientX, ev.clientY));
+  p.nom.addEventListener("pointerleave", () => survoler(null));
+  p.nom.addEventListener("click", ev => { ev.stopPropagation(); montrerFiche(id); });
   css2d(p.nom, ia ? 4.35 : 3.8, f.racine);
   p.carton = el("div", {class: "carton3d", hidden: ""});
   css2d(p.carton, 4.9, f.racine);
@@ -322,6 +333,7 @@ function animerRallyes(dt) {
   rallyes.forEach((r, i) => {
     const [a, b] = r.joueurs, balle = balles[i];
     if (a.chemin.length || b.chemin.length || a.delai > 0 || b.delai > 0) return;
+    if ((lecture.actif || lecture.suspendue) && (lecture.f < r.debut || lecture.f > r.fin)) return;   // pas commencé, ou fini
     balle.visible = true;
     if (REDUIT) { balle.position.set((a.pos.x + b.pos.x) / 2, 1.4, (a.pos.z + b.pos.z) / 2); return; }
     r.u += dt / r.duree;
@@ -339,7 +351,7 @@ function animerRallyes(dt) {
 // ------------------------------------------------------------------ état de l'affichage
 let enPause = false, semaineVue = null, jourVu = null, affiche = null, recu = null, appelsAuGel = 0;
 let vue = null, V = null, premier = true, selection = null;
-const lecture = {actif: false, debut: 0};
+const lecture = {actif: false, suspendue: false, f: 0, duree: 30000};
 const nomDe = id => { const j = affiche?.saison?.joueurs.find(x => x.id === id); return j ? j.nom.split(" ").pop() : id; };
 const joueurDe = id => vue?.joueurs.find(x => x.id === id);
 const rangDe = id => vue ? [...vue.joueurs].sort((a, b) => (V.points[b.id] ?? 0) - (V.points[a.id] ?? 0)).findIndex(x => x.id === id) + 1 : 0;
@@ -396,7 +408,7 @@ function placerTout(e, immediat, direct) {
       p.frappe = false;
       montrerBulle(p, L.bulle);
     });
-    if (m) rallyes.push({joueurs: [persos.get(m.a), persos.get(m.b)], u: Math.random(), sens: true, duree: 1.0 + Math.random() * 0.3});
+    if (m) rallyes.push({joueurs: [persos.get(m.a), persos.get(m.b)], u: Math.random(), sens: true, duree: 1.0 + Math.random() * 0.3, ...horaire(m)});
   }
   for (const c of COMPETITION) {
     const u = persos.get("u:" + c), m = parCourt.get(c);
@@ -449,19 +461,39 @@ function rendreTableau(e, k) {
     }
   }
 }
-function rendreJournal() {
-  const ol = $("evenements");
-  ol.replaceChildren();
-  const ev = V.evenements.length ? V.evenements : [{type: "info", texte: "Rien de particulier ce jour-là."}];
-  for (const x of ev) {
-    const li = el("li", {class: x.type, ...(x.qui ? {"data-qui": x.qui, tabindex: 0} : {})}, x.texte);
-    if (x.qui) {
-      li.addEventListener("click", () => montrerFiche(x.qui));
-      li.addEventListener("keydown", e => { if (e.key === "Enter") montrerFiche(x.qui); });
-    }
-    ol.append(li);
-  }
-  $("journal-titre").textContent = V.tournoi ? `Journal du ${jourNom(V.jour)}` : `Journal de la semaine ${V.semaine}`;
+// écran de contrôle : temps forts du jour et grille des agents
+function voir(lieu, qui, ouvrirFiche) {
+  const L = LIEUX[lieu];
+  if (!L) { if (qui && ouvrirFiche) montrerFiche(qui); return; }
+  const c = L.C ? {x: L.C.cx, z: L.C.cz} : {x: L.aire.x + L.aire.w / 2, z: L.aire.z + L.aire.d / 2};
+  viseCamera = {cible: new THREE.Vector3(c.x, 0, c.z), pos: new THREE.Vector3(c.x, L.C ? 30 : 24, c.z + (L.C ? 34 : 26)), t: 0};
+  if (qui && persos.has(qui) && ouvrirFiche) montrerFiche(qui, false);
+}
+const controle = creerControle({LIEUX, voir, REDUIT});
+const grilleAgents = creerGrille({LIEUX, voir});
+const titreJour = () => (V.tournoi ? `Temps forts du ${jourNom(V.jour)}` : `Semaine ${V.semaine}, sans tournoi`);
+function rendreControle() {
+  const enCours = lecture.actif || lecture.suspendue;
+  controle.afficher(enCours ? lecture.f : 1, titreJour(), enCours, $("suivre").checked);
+}
+$("grille-btn").addEventListener("click", () => {
+  const ouvrir = $("grille").hidden;
+  $("grille").hidden = !ouvrir;
+  $("grille-btn").setAttribute("aria-expanded", String(ouvrir));
+  $("grille-btn").classList.toggle("actif", ouvrir);
+  if (ouvrir) grilleAgents.rendre();
+});
+$("grille-fermer").addEventListener("click", () => $("grille-btn").click());
+{
+  const curseur = $("vitesse");
+  try { const v = localStorage.getItem("village3d.vitesse"); if (v !== null && VITESSES[+v]) curseur.value = v; } catch (e) { /* stockage indisponible */ }
+  const maj = () => {
+    lecture.duree = VITESSES[+curseur.value] * 1000;
+    $("vitesse-val").textContent = `${VITESSES[+curseur.value]} s par jour`;
+    try { localStorage.setItem("village3d.vitesse", curseur.value); } catch (e) { /* idem */ }
+  };
+  curseur.addEventListener("input", maj);
+  maj();
 }
 
 function afficher(immediat = false) {
@@ -482,14 +514,16 @@ function afficher(immediat = false) {
   placerTout(e, immediat || premier, enDirect ? decisionsEnDirect(e) : new Map());
   premier = false;
   if (!lecture.actif) heureDuJour(figee || e.termine ? 0.45 : Math.min(1, (e.semaine_courante || []).length / 23));
-  rendreJournal();
+  controle.nouvelleJournee(tempsForts(V, rangDe, nomDe));
+  rendreControle();
+  grilleAgents.mettreAJour(vue.joueurs, V, rangDe, j => MAILLOTS_CSS[j.paire % 8], vue.incidents || []);
   infobulle.hidden = true;                       // son contenu décrivait le jour précédent
   if (enDirect) bulleEnDirect(e);
   if (selection) montrerFiche(selection, false);
 }
 function choisir(w, jour) {
   if (recu && semainesFaites(recu) > semainesFaites(affiche)) affiche = recu;
-  semaineVue = w; jourVu = jour;
+  semaineVue = w; jourVu = jour; lecture.suspendue = false;
   if (w >= semainesFaites(affiche) && jour === null && !enPause && !lecture.actif) semaineVue = null;
   else if (!enPause) mettrePause(true);
   afficher();
@@ -503,35 +537,42 @@ function mettrePause(oui) {
   else { if (recu) affiche = recu; $("retard").textContent = ""; }
 }
 function arreterLecture() {
+  lecture.suspendue = lecture.actif && lecture.f < 1;      // on reprendra à la même heure
   lecture.actif = false;
   $("lecture").classList.remove("actif");
   $("lecture").setAttribute("aria-pressed", "false");
   $("lecture").textContent = "▶ Lecture";
+  if (lecture.suspendue) $("statut").textContent = `Lecture arrêtée à ${$("horloge").textContent} : « Lecture » pour reprendre`;
 }
 function lancerLecture() {
   if (!affiche || !affiche.saison) return;
   const faites = semainesFaites(affiche);
   let k = semaineVue ?? faites, d = jourVu ?? 7;
-  if (d === 7 || !V || !V.tournoi) { k = k >= faites ? 1 : k + 1; d = 1; }   // on repart au lundi suivant
-  lecture.actif = true;
+  const reprise = lecture.suspendue;
+  if (!reprise) {
+    if (jourVu === null && V && V.tournoi) d = 1;                              // pas de jour choisi : depuis le lundi
+    else if (d === 7 || !V || !V.tournoi) { k = k >= faites ? 1 : k + 1; d = 1; }   // sinon le lundi suivant
+    lecture.f = 0;                                                             // sinon : ce jour, depuis le matin
+  }
+  lecture.actif = true; lecture.suspendue = false;
   $("lecture").classList.add("actif");
   $("lecture").setAttribute("aria-pressed", "true");
   $("lecture").textContent = "⏸ Lecture";
   if (!enPause) mettrePause(true);
-  semaineVue = k; jourVu = d; lecture.debut = performance.now();
-  afficher();
+  semaineVue = k; jourVu = d;
+  if (reprise) { $("statut").textContent = `Lecture : semaine ${k}`; rendreControle(); } else afficher();
 }
 function avancerLecture() {
   const faites = semainesFaites(affiche);
   if (V.tournoi && V.jour < 7) jourVu = V.jour + 1;
   else if (V.semaine < faites) { semaineVue = V.semaine + 1; jourVu = 1; }
-  else { arreterLecture(); return; }
-  lecture.debut = performance.now();
+  else { lecture.f = 1; arreterLecture(); return; }
+  lecture.f = 0;
   afficher();
 }
 $("lecture").addEventListener("click", () => (lecture.actif ? arreterLecture() : lancerLecture()));
-$("pause").addEventListener("click", () => { arreterLecture(); mettrePause(!enPause); if (!enPause) { semaineVue = null; jourVu = null; } afficher(); });
-$("direct-btn").addEventListener("click", () => { arreterLecture(); semaineVue = null; jourVu = null; mettrePause(false); afficher(); });
+$("pause").addEventListener("click", () => { arreterLecture(); lecture.suspendue = false; mettrePause(!enPause); if (!enPause) { semaineVue = null; jourVu = null; } afficher(); });
+$("direct-btn").addEventListener("click", () => { arreterLecture(); lecture.suspendue = false; semaineVue = null; jourVu = null; mettrePause(false); afficher(); });
 $("noms").addEventListener("click", () => {
   const oui = document.body.classList.toggle("avec-noms");
   $("noms").classList.toggle("actif", oui); $("noms").setAttribute("aria-pressed", String(oui));
@@ -736,16 +777,20 @@ function viser(ev) {
   const h = rayon.intersectObjects(cliquables.filter(visibleDe), false)[0];
   return h ? h.object.userData.perso : null;
 }
-rendu.domElement.addEventListener("pointermove", ev => {
-  if (ev.buttons) { infobulle.hidden = true; return; }
-  const id = viser(ev);
+// survol commun : rayon sur la scène, ou étiquette du nom
+function survoler(id, ev) {
   if (id !== survol) {
     if (survol) persos.get(survol)?.nom.classList.remove("survol");
     survol = id;
     if (id) persos.get(id)?.nom.classList.add("survol");
     rendu.domElement.style.cursor = id ? "pointer" : "";
   }
-  montrerInfobulle(id, ev.clientX, ev.clientY);
+  if (!id) infobulle.hidden = true;
+  else if (ev) montrerInfobulle(id, ev.clientX, ev.clientY);
+}
+rendu.domElement.addEventListener("pointermove", ev => {
+  if (ev.buttons) { infobulle.hidden = true; return; }
+  survoler(viser(ev), ev);
 });
 rendu.domElement.addEventListener("pointerleave", () => { infobulle.hidden = true; });
 rendu.domElement.addEventListener("pointerdown", ev => {
@@ -770,9 +815,10 @@ function boucle() {
     if (D.ondes) D.ondes.material.emissiveIntensity = 0.3 + Math.sin(t * 1.5) * 0.06;
   }
   if (lecture.actif) {
-    const f = (performance.now() - lecture.debut) / DUREE_JOUR;
-    heureDuJour(0.1 + 0.8 * Math.min(1, f));
-    if (f >= 1) avancerLecture();
+    lecture.f = Math.min(1, lecture.f + dt * 1000 / lecture.duree);
+    heureDuJour(0.1 + 0.8 * lecture.f);
+    rendreControle();
+    if (lecture.f >= 1) avancerLecture();
   }
   if (selection) {
     const p = persos.get(selection);

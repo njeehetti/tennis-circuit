@@ -77,7 +77,7 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
 #fiche .kv span{color:#6a766f}#fiche .kv b{text-align:right;font-weight:600}
 #fiche blockquote{margin:8px 0 0;padding:8px 10px;background:#eef3ec;border-radius:10px;font-size:13.5px;line-height:1.45}
 #fiche blockquote span{display:block;font:600 14px "Barlow Condensed",sans-serif;color:var(--tableau-2)}
-#fiche .fermer{position:absolute;right:6px;top:8px;border:0;background:none;font-size:24px;line-height:1;color:#56635c;padding:2px 8px;cursor:pointer}
+#fiche .fermer,#grille .fermer{position:absolute;right:6px;top:8px;border:0;background:none;font-size:24px;line-height:1;color:#56635c;padding:2px 8px;cursor:pointer}
 /* jours de la semaine */
 .jours{grid-column:1/-1;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
 .jours:empty{display:none}
@@ -107,8 +107,8 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
 #infobulle[hidden]{display:none}
 #infobulle .t{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
 #infobulle b.nom{font:700 19px "Barlow Condensed",sans-serif}
-#infobulle .badge{font:600 12.5px "Barlow Condensed",sans-serif;padding:0 8px;border-radius:999px;background:#e8ece9;color:#46524c;white-space:nowrap}
-#infobulle .badge.ia{background:var(--balle);color:var(--tableau)}
+#infobulle .badge,#grille .badge{font:600 12.5px "Barlow Condensed",sans-serif;padding:0 8px;border-radius:999px;background:#e8ece9;color:#46524c;white-space:nowrap}
+#infobulle .badge.ia,#grille .badge.ia{background:var(--balle);color:var(--tableau)}
 #infobulle .act{color:#46524c;margin:2px 0 5px}
 #infobulle q{display:block;margin-top:5px;padding:5px 8px;background:#eef3ec;border-radius:8px;font-style:italic;quotes:"« " " »"}
 .jauges{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:center;font-size:12px;color:#56635c}
@@ -131,6 +131,56 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
   #fiche{top:auto;height:55%;left:8px;right:8px;width:auto;bottom:8px}.aide{display:none}
   #journal{top:auto;bottom:60px;max-height:28%;left:8px;width:auto;right:8px}.jour span{display:none}}
 @media (prefers-reduced-motion: reduce){.case.encours::after,.point{animation:none}#fiche{transition:none}}
+
+/* étiquettes de nom survolables (le calque des étiquettes laisse passer la souris ailleurs) */
+.nom3d{pointer-events:auto;cursor:pointer}
+body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):not(.choisi){pointer-events:none}
+/* curseur de vitesse */
+.vitesse{display:inline-flex;align-items:center;gap:6px;font:600 14px "Barlow Condensed",sans-serif;color:#cfe3d6;padding:0 6px}
+.vitesse input{width:96px;accent-color:var(--balle)}
+.vitesse output{min-width:74px;font-weight:500;color:#fff}
+/* écran des temps forts */
+.tf-tete{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+#horloge{white-space:nowrap;font:700 18px "Barlow Condensed",sans-serif;color:#2d8a5f;font-variant-numeric:tabular-nums}
+#a-la-une{background:var(--tableau);color:#f4f7f2;border-radius:10px;padding:8px 11px 9px;margin:4px 0 6px}
+#a-la-une small{display:block;color:var(--balle);font:600 13px "Barlow Condensed",sans-serif}
+#a-la-une p{margin:2px 0 4px;font-size:14px;line-height:1.35}
+#a-la-une .tf-meta{color:#b9cfc2}
+#a-la-une .voir{background:var(--balle);color:var(--tableau);margin-top:4px}
+.suivre{display:flex;gap:6px;align-items:center;font-size:12.5px;color:#46524c;margin:0 0 4px}
+.tf-meta{display:flex;gap:6px;align-items:center;font-size:12px;color:#6b7670}
+.tf-meta time{font-variant-numeric:tabular-nums;font-weight:600}
+.tf-lieu{background:#e6efe9;color:#1e4d3a;border-radius:999px;padding:0 7px}
+.tf-tag{background:#fdf1c8;color:#7a5b00;border-radius:999px;padding:0 7px}
+#evenements p{margin:1px 0 2px}
+#evenements li.fort{background:linear-gradient(90deg,rgba(217,242,74,.22),transparent 70%)}
+#evenements li.direct::before{background:#e63946;box-shadow:0 0 0 3px rgba(230,57,70,.2)}
+#evenements li.nouveau{animation:arrive .9s ease-out}
+@keyframes arrive{from{background:rgba(217,242,74,.6)}}
+.voir{font:600 13px "Barlow Condensed",sans-serif;border:0;border-radius:999px;padding:2px 10px;background:#e6efe9;color:var(--tableau);cursor:pointer}
+.voir:hover,.voir:focus-visible{background:var(--balle)}
+/* grille de tous les joueurs */
+#grille{position:fixed;left:362px;right:16px;bottom:16px;z-index:5;max-height:52%;display:flex;flex-direction:column;background:rgba(255,253,247,.97);border-radius:14px;box-shadow:0 22px 50px -20px rgba(0,0,0,.6);padding:10px 14px}
+#grille[hidden]{display:none}
+.grille-tete{display:flex;align-items:baseline;gap:12px;position:relative;padding-right:30px}
+.grille-tete h2{margin:0;font:700 19px "Barlow Condensed",sans-serif;color:var(--tableau)}
+.grille-tete p{margin:0;font-size:12.5px;color:#6b7670}
+.grille-tete .fermer{position:absolute;right:0;top:0}
+.grille-defile{overflow:auto;margin-top:6px}
+#grille-table{border-collapse:collapse;width:100%;font-size:13px}
+#grille-table th{position:sticky;top:0;background:#f4f1e6;text-align:left;padding:0}
+#grille-table th button{all:unset;cursor:pointer;display:block;padding:5px 7px;font:600 13px "Barlow Condensed",sans-serif;color:var(--tableau);white-space:nowrap}
+#grille-table th button:focus-visible{outline:2px solid #2d8a5f}
+#grille-table td{padding:4px 7px;border-top:1px solid #e6e9e4;white-space:nowrap}
+#grille-table td.act{white-space:normal;min-width:200px;color:#46524c}
+#grille-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+#grille-table td.jauge{position:relative;min-width:60px}
+#grille-table td.jauge i{position:absolute;left:6px;bottom:3px;height:3px;border-radius:2px;max-width:calc(100% - 12px)}
+#grille-table tbody tr{cursor:pointer}
+#grille-table tbody tr:hover,#grille-table tbody tr:focus-visible{background:#eef6d0;outline:none}
+.pastille{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
+@media (prefers-reduced-motion: reduce){#evenements li.nouveau{animation:none}}
+@media (max-width:720px){.vitesse input{width:70px}.vitesse output{min-width:0}#grille{max-height:70%;bottom:8px;left:8px;right:8px}}
 </style>
 <script type="importmap">
 {"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -146,9 +196,13 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
   <div class="aff-tournoi"><b id="tournoi">Connexion…</b><span id="detail"></span></div>
   <div class="aff-actions">
     <button id="lecture" type="button" aria-pressed="false">▶ Lecture</button>
+    <label class="vitesse" title="Durée d'une journée pendant la lecture">Vitesse
+      <input type="range" id="vitesse" min="0" max="6" step="1" value="3" aria-describedby="vitesse-val">
+      <output id="vitesse-val" for="vitesse">30 s par jour</output></label>
     <button id="pause" type="button" aria-pressed="false">⏸ Pause</button>
     <button id="direct-btn" type="button" hidden>Revenir au direct</button>
     <button id="vue" type="button" class="discret">Vue d'ensemble</button>
+    <button id="grille-btn" type="button" class="discret" aria-expanded="false" aria-controls="grille">Tous les joueurs</button>
     <button id="noms" type="button" class="discret actif" aria-pressed="true">Noms</button>
     <a href="/" class="discret">Plan 2D</a>
     <span id="retard"></span>
@@ -158,9 +212,17 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
 </header>
 
 <aside id="journal" aria-labelledby="journal-titre">
-  <h2 id="journal-titre">Journal du jour</h2>
+  <div class="tf-tete"><h2 id="journal-titre">Temps forts</h2><span id="horloge" aria-label="Heure dans la journée"></span></div>
+  <div id="a-la-une" aria-live="polite"></div>
+  <label class="suivre"><input type="checkbox" id="suivre"> La caméra suit les temps forts pendant la lecture</label>
   <ol id="evenements"></ol>
 </aside>
+<section id="grille" hidden aria-labelledby="grille-titre">
+  <div class="grille-tete"><h2 id="grille-titre">Tous les joueurs, ce jour-là</h2>
+    <p>Cliquer sur un en-tête pour trier, sur une ligne pour aller voir le joueur.</p>
+    <button id="grille-fermer" type="button" class="fermer" aria-label="Fermer la grille">×</button></div>
+  <div class="grille-defile"><table id="grille-table"></table></div>
+</section>
 <div id="infobulle" hidden role="tooltip"></div>
 <aside id="fiche" hidden aria-live="polite"></aside>
 
@@ -168,7 +230,7 @@ body:not(.avec-noms) .nom3d:not(.survol):not(.choisi),.nom3d.coach:not(.survol):
   <p><span class="point" id="point"></span><span id="statut">connexion…</span></p>
   <p id="info"></p>
 </div>
-<p class="aide">Survoler un personnage pour le voir, cliquer pour sa fiche complète. Glisser pour tourner, molette pour zoomer, clic droit pour se déplacer. « Lecture » déroule le tournoi jour par jour. Balle jaune : joueur piloté par l'IA ; même maillot : jumeaux ; carton : sanction de l'arbitre.</p>
+<p class="aide">Survoler un personnage ou son nom pour le voir, cliquer pour sa fiche complète. Glisser pour tourner, molette pour zoomer, clic droit pour se déplacer. « Lecture » déroule le tournoi jour par jour, à la vitesse choisie ; « Voir » dans les temps forts zoome sur le lieu. Balle jaune : joueur piloté par l'IA ; même maillot : jumeaux ; carton : sanction de l'arbitre.</p>
 
 <div id="voile">Construction du village…<small>chargement de la 3D</small></div>
 

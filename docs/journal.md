@@ -267,3 +267,29 @@ Choix et raisons :
   `village3d_decor.js`). Le temps est compressé : un trajet prend environ
   3 s quelle que soit la distance.
 - Non vérifié : l'affichage sur téléphone de la vue 3D.
+
+### Écran de contrôle, vitesse et grille (demande de Njee)
+
+Demande : infobulle dès le survol du nom, curseur de vitesse, « écran de
+contrôle qui indique les faits majeurs qui se passent actuellement » avec
+accès en vue zoomée, et « une grille résumant l'état de tous les agents ».
+
+- **Horaire reconstruit** (`village3d_controle.js`) : la simulation ne
+  date les matchs qu'au jour près. L'affichage leur donne une heure
+  plausible (courts annexes dès le matin, central en fin d'après-midi,
+  durée selon le nombre de sets) ; un incident tombe dans le set où il a
+  eu lieu. Ces heures sont de la mise en scène, pas des données simulées.
+- **Intérêt d'un événement** : tour du match (finale 90, demie 65, quart
+  45, premier tour 25), +30 pour une surprise (vainqueur classé 4 places
+  ou plus derrière), +10 pour un match en 3 ou 5 sets ; point de pénalité
+  75, avertissement 50, fédération 70, vestiaires tendus 45. La caméra
+  automatique ne se déplace que pour un intérêt de 45 ou plus, pour ne
+  pas sauter d'un lieu à l'autre toutes les secondes.
+- **Pas de divulgation** : pendant la lecture, un match apparaît d'abord
+  « en cours » (favori nommé en premier), le résultat seulement à sa fin ;
+  les échanges de balle ne se jouent que pendant ce créneau.
+- **Vitesse** : 30 s par jour par défaut (au lieu de 5 s, jugé trop
+  rapide), mémorisée dans le navigateur. Arrêter la lecture garde l'heure ;
+  « Lecture » reprend au même moment.
+- **Survol** : les étiquettes de nom captent la souris (sauf masquées), et
+  chaque figurine a une zone de survol invisible plus large qu'elle.

@@ -144,9 +144,15 @@ leur chaise et des ramasseurs autour des courts où l'on joue.
 
 Un tournoi se suit **jour par jour** : premier tour lundi et mardi, quarts
 mercredi et jeudi, journée médias vendredi, demies samedi, finale
-dimanche (bouton « Lecture » ou barre Espace, 5 s par jour). Survoler un
-personnage affiche une infobulle (rang, activité du jour, jauges) ; un
-clic ouvre sa fiche (courbe du moral et de la popularité, sanctions,
+dimanche (bouton « Lecture » ou barre Espace ; le curseur « Vitesse » règle
+la durée d'une journée, de 2 min à 6 s). L'écran **Temps forts** raconte
+la journée heure par heure : début des matchs, incidents d'arbitrage,
+résultats, vestiaires, presse ; l'événement le plus marquant est mis à la
+une, chaque ligne a un bouton « Voir » qui zoome sur le lieu, et la caméra
+peut suivre seule les temps forts. « Tous les joueurs » ouvre une grille
+triable de l'état de chaque agent ce jour-là (activité, lieu, jauges,
+sanctions, points). Survoler un personnage ou son nom affiche une
+infobulle (rang, activité du jour, jauges) ; un clic ouvre sa fiche (courbe du moral et de la popularité, sanctions,
 relations aux vestiaires, décisions de la fédération). Le plan 2D reste
 disponible sur `/`.
 
@@ -173,7 +179,7 @@ tennis/
   dashboard.py  tableau de bord HTML
   social.py     moral, popularité, réputation, arbitres, sanctions
   direct.py     suivi en direct (serveur local + direct.html)
-  village3d*.js village 3D : décor, public, jour par jour, personnages
+  village3d*.js village 3D : décor, public, jour par jour, écran de contrôle, personnages
 outils/         expérience multi-graines, téléchargement des données
 docs/           document de conception et journal des choix
 tests/          pytest (faux LLM : aucun appel réseau)

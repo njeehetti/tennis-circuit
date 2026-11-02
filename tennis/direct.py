@@ -123,7 +123,7 @@ def dossier_le_plus_recent(racine: Path) -> Path:
 
 
 # Modules du village 3D servis tels quels (liste fermée : aucun chemin arbitraire).
-MODULES_3D = ("/village3d.js", "/village3d_jour.js", "/village3d_public.js", "/village3d_decor.js")
+MODULES_3D = ("/village3d.js", "/village3d_jour.js", "/village3d_public.js", "/village3d_decor.js", "/village3d_controle.js")
 
 
 def creer_serveur(dossier: Path, port: int) -> ThreadingHTTPServer:
