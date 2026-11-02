@@ -1,0 +1,168 @@
+"""Suivi en direct d'une saison en cours (lecture seule, aucune dépendance).
+
+python -m tennis.direct [--nom saison_v2_g1] [--port 8765]
+puis ouvrir http://127.0.0.1:8765
+
+Le serveur ne fait que lire les fichiers que la simulation écrit déjà :
+`runs/<nom>/saison.json` (réécrit à chaque fin de semaine), `runs/<nom>/llm.jsonl`
+(une ligne par appel au LLM, en temps réel) et, s'il existe, `runs/<nom>.log`.
+Il ne touche jamais à la simulation : on peut l'ouvrir, le fermer, le relancer.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import statistics
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+
+from .donnees import RACINE
+
+DERNIERS_APPELS = 25
+APPELS_PAR_SEMAINE = 23   # mesuré sur la saison v1 (182 appels en 8 semaines)
+
+# Ce qu'on affiche de chaque réponse, selon le rôle de l'agent.
+CHAMPS = {
+    "joueur": ("jouer", "entrainement", "raisonnement"),
+    "entraineur": ("tactique", "recommande_jouer", "conseil"),
+    "reflexion": ("lecon",),
+    "journaliste": ("titre",),
+    "conference": ("reponse",),
+    "agent": ("montant", "argument"),
+    "sponsor": ("decision", "montant"),
+}
+
+
+def _lire_appels(chemin: Path) -> list[dict]:
+    """Lit llm.jsonl ; ignore une dernière ligne en cours d'écriture."""
+    if not chemin.exists():
+        return []
+    appels = []
+    for ligne in chemin.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            appels.append(json.loads(ligne))
+        except json.JSONDecodeError:
+            continue
+    return appels
+
+
+def _resume_appel(a: dict) -> dict:
+    """Garde le rôle, la durée, l'erreur et les champs utiles de la réponse."""
+    try:
+        rep = json.loads(a.get("reponse") or "{}")
+    except json.JSONDecodeError:
+        rep = {}
+    if not isinstance(rep, dict):
+        rep = {}
+    champs = {k: rep[k] for k in CHAMPS.get(a.get("role"), ()) if k in rep}
+    return {"role": a.get("role", "?"), "ok": bool(a.get("ok")), "duree": a.get("duree", 0),
+            "erreur": a.get("erreur", ""), "champs": champs}
+
+
+def _lire_saison(chemin: Path) -> dict | None:
+    """saison.json peut être en cours de réécriture : None si illisible."""
+    try:
+        return json.loads(chemin.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _derniere_ligne_semaine(log: Path) -> str:
+    if not log.exists():
+        return ""
+    lignes = [l for l in log.read_text(encoding="utf-8", errors="replace").splitlines()
+              if l.startswith("semaine ")]
+    return lignes[-1] if lignes else ""
+
+
+def etat(dossier: Path, cache: dict | None = None) -> dict:
+    """Instantané de la saison en cours, prêt à être envoyé en JSON à la page."""
+    appels = _lire_appels(dossier / "llm.jsonl")
+    saison = _lire_saison(dossier / "saison.json")
+    if saison is None and cache is not None:
+        saison = cache.get("saison")          # garde la dernière version lisible
+    if cache is not None and saison is not None:
+        cache["saison"] = saison
+    durees = [a.get("duree", 0) for a in appels if a.get("ok")]
+    total = (saison or {}).get("meta", {}).get("semaines", 12)
+    faites = (saison or {}).get("semaine_atteinte", 0)
+    termine = saison is not None and saison.get("partiel") is False
+    moy = statistics.mean(durees) if durees else 0.0
+    restant = 0 if termine else max(0, (total - faites) * APPELS_PAR_SEMAINE * moy)
+    return {
+        "dossier": dossier.name,
+        "termine": termine,
+        "semaines": total,
+        "semaines_faites": faites,
+        "en_cours": _derniere_ligne_semaine(dossier.parent / f"{dossier.name}.log"),
+        "appels": len(appels),
+        "echecs": sum(1 for a in appels if not a.get("ok")),
+        "duree_moyenne": round(moy, 1),
+        "restant_s": round(restant),
+        "derniers": [_resume_appel(a) for a in appels[-DERNIERS_APPELS:]][::-1],
+        "saison": saison,
+        "tableau": (dossier / "tableau_de_bord.html").exists(),
+    }
+
+
+def dossier_le_plus_recent(racine: Path) -> Path:
+    candidats = [d for d in racine.iterdir() if d.is_dir() and (d / "llm.jsonl").exists()]
+    if not candidats:
+        raise SystemExit(f"Aucune saison LLM trouvée dans {racine}")
+    return max(candidats, key=lambda d: (d / "llm.jsonl").stat().st_mtime)
+
+
+def creer_serveur(dossier: Path, port: int) -> ThreadingHTTPServer:
+    cache: dict = {}
+    page = (Path(__file__).with_name("direct.html")).read_bytes()
+
+    class Gestionnaire(BaseHTTPRequestHandler):
+        def _envoyer(self, code: int, corps: bytes, type_: str) -> None:
+            self.send_response(code)
+            self.send_header("Content-Type", type_)
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(corps)))
+            self.end_headers()
+            self.wfile.write(corps)
+
+        def do_GET(self):  # noqa: N802 (nom imposé par http.server)
+            chemin = self.path.split("?", 1)[0]
+            if chemin in ("/", "/index.html"):
+                self._envoyer(200, page, "text/html; charset=utf-8")
+            elif chemin == "/etat":
+                corps = json.dumps(etat(dossier, cache), ensure_ascii=False).encode("utf-8")
+                self._envoyer(200, corps, "application/json; charset=utf-8")
+            elif chemin == "/tableau" and (dossier / "tableau_de_bord.html").exists():
+                self._envoyer(200, (dossier / "tableau_de_bord.html").read_bytes(),
+                              "text/html; charset=utf-8")
+            else:
+                self._envoyer(404, b"introuvable", "text/plain; charset=utf-8")
+
+        def log_message(self, *args):   # pas de bruit dans le terminal
+            pass
+
+    # 127.0.0.1 seulement : la page n'est pas exposée au réseau local.
+    return ThreadingHTTPServer(("127.0.0.1", port), Gestionnaire)
+
+
+def main(argv=None) -> None:
+    p = argparse.ArgumentParser(description="Suivi en direct d'une saison en cours.")
+    p.add_argument("--nom", default=None, help="dossier dans runs/ (défaut : le plus récent)")
+    p.add_argument("--port", type=int, default=8765)
+    a = p.parse_args(argv)
+    racine = RACINE / "runs"
+    dossier = racine / a.nom if a.nom else dossier_le_plus_recent(racine)
+    if not dossier.is_dir():
+        raise SystemExit(f"Dossier introuvable : {dossier}")
+    serveur = creer_serveur(dossier, a.port)
+    print(f"Suivi de {dossier.name} : http://127.0.0.1:{a.port}  (Ctrl+C pour arrêter)", flush=True)
+    try:
+        serveur.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        serveur.server_close()
+
+
+if __name__ == "__main__":
+    main()

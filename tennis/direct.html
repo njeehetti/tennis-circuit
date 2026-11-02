@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Circuit en direct</title>
+<style>
+:root{--fond:#f6f5f1;--carte:#fff;--texte:#1d1f22;--doux:#5d636b;--ligne:#e2e0d9;--accent:#1f6f50;--accent2:#2d5f9a;--alerte:#b4442f;--puce:#eef0ea}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--fond:#141617;--carte:#1d2022;--texte:#e8e6e1;--doux:#a1a7ad;--ligne:#30353a;--accent:#5cc395;--accent2:#7fb0ea;--alerte:#e98b74;--puce:#262a2d}}
+:root[data-theme="dark"]{--fond:#141617;--carte:#1d2022;--texte:#e8e6e1;--doux:#a1a7ad;--ligne:#30353a;--accent:#5cc395;--accent2:#7fb0ea;--alerte:#e98b74;--puce:#262a2d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fond);color:var(--texte);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1200px;margin:0 auto;padding:20px 16px 64px}
+h1{font-size:24px;margin:0}h2{font-size:17px;margin:0 0 10px}
+.tete{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.etat{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--doux)}
+.point{width:10px;height:10px;border-radius:50%;background:var(--accent);animation:pulse 1.6s infinite}
+.point.fini{animation:none;background:var(--doux)}.point.perdu{animation:none;background:var(--alerte)}
+@keyframes pulse{0%{opacity:1}50%{opacity:.25}100%{opacity:1}}
+.barre{height:10px;background:var(--puce);border-radius:999px;overflow:hidden;margin:6px 0 4px}
+.barre i{display:block;height:100%;background:var(--accent);transition:width .6s}
+.semaines{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.semaines span{font-size:12px;padding:2px 7px;border-radius:6px;background:var(--puce);color:var(--doux)}
+.semaines span.fait{background:var(--accent);color:var(--carte)}
+.semaines span.cours{outline:2px solid var(--accent);color:var(--texte)}
+.grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0 16px}
+.chiffre{background:var(--carte);border:1px solid var(--ligne);border-radius:10px;padding:10px 12px}
+.chiffre b{display:block;font-size:21px;font-variant-numeric:tabular-nums}.chiffre span{color:var(--doux);font-size:13px}
+.colonnes{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px}
+@media (max-width:860px){.colonnes{grid-template-columns:1fr}}
+.carte{background:var(--carte);border:1px solid var(--ligne);border-radius:10px;padding:14px;margin:0 0 16px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:5px 7px;border-bottom:1px solid var(--ligne);vertical-align:top}
+th{color:var(--doux);font-weight:600}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.puce{display:inline-block;padding:0 7px;border-radius:999px;background:var(--puce);font-size:12px;color:var(--doux);white-space:nowrap}
+.puce.llm{color:var(--accent);font-weight:600}.puce.err{color:var(--alerte)}
+.pos{color:var(--accent)}.neg{color:var(--alerte)}.doux{color:var(--doux);font-size:13px}
+.flux{list-style:none;margin:0;padding:0;max-height:640px;overflow-y:auto}
+.flux li{border-left:3px solid var(--ligne);padding:4px 0 6px 10px;margin:0 0 8px}
+.flux li.nouveau{border-left-color:var(--accent);animation:arrive .8s}
+@keyframes arrive{from{background:var(--puce)}to{background:transparent}}
+.flux .r-joueur{color:var(--accent)}.flux .r-entraineur{color:var(--accent2)}
+.flux p{margin:2px 0 0}
+.duel{display:grid;grid-template-columns:minmax(0,1fr) 120px minmax(0,1fr);gap:8px;align-items:center;font-size:13px;margin:0 0 6px}
+.duel .g{text-align:right}.duel .axe{position:relative;height:14px;background:var(--puce);border-radius:4px}
+.duel .axe i{position:absolute;top:0;height:100%;border-radius:4px}
+.duel .axe::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--doux)}
+.article h3{margin:0 0 4px;font-size:15px}.article p{margin:0 0 10px;font-size:14px}
+a{color:var(--accent2)}
+button{font:inherit;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid var(--ligne);background:var(--carte);color:var(--texte);cursor:pointer}
+</style>
+</head>
+<body>
+<main>
+  <div class="tete">
+    <div>
+      <h1>Circuit fictif : saison en direct</h1>
+      <div class="etat"><span class="point" id="point"></span><span id="statut">connexion…</span></div>
+    </div>
+    <div><span id="lien"></span> <button id="theme" type="button">thème</button></div>
+  </div>
+
+  <div class="carte">
+    <div class="doux" id="encours">—</div>
+    <div class="barre"><i id="progres" style="width:0"></i></div>
+    <div class="semaines" id="semaines"></div>
+  </div>
+
+  <div class="grille" id="chiffres"></div>
+
+  <div class="colonnes">
+    <div>
+      <div class="carte">
+        <h2>Le LLM pense en ce moment</h2>
+        <p class="doux" style="margin-top:-6px">Chaque décision d'un agent, à l'instant où le modèle répond (25 dernières).</p>
+        <ul class="flux" id="flux"></ul>
+      </div>
+    </div>
+    <div>
+      <div class="carte">
+        <h2>Classement provisoire</h2>
+        <table><thead><tr><th class="n">#</th><th>Joueur</th><th></th><th class="n">Points</th><th class="n">Δ</th><th class="n">Titres</th><th class="n">V-D</th></tr></thead>
+        <tbody id="classement"></tbody></table>
+      </div>
+      <div class="carte">
+        <h2>Duels de jumeaux : LLM contre règle fixe</h2>
+        <p class="doux" style="margin-top:-6px">Points gagnés depuis le début de saison, à profil identique. À droite, le jumeau LLM fait mieux.</p>
+        <div id="duels"></div>
+        <p class="doux" id="bilan"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="colonnes">
+    <div class="carte">
+      <h2>Décisions des joueurs LLM, semaine <span id="num-sem">—</span></h2>
+      <table><thead><tr><th>Joueur</th><th>Choix</th><th>Raisonnement / conseil</th></tr></thead>
+      <tbody id="decisions"></tbody></table>
+    </div>
+    <div class="carte">
+      <h2>Presse</h2>
+      <div id="articles"><p class="doux">Le premier article paraîtra à la fin du premier tournoi.</p></div>
+    </div>
+  </div>
+</main>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+function el(tag, attrs, ...enfants) {            // tout texte passe par textContent : pas d'injection
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") n.className = v; else if (k === "style") n.style.cssText = v; else n.setAttribute(k, v);
+  }
+  for (const e of enfants) if (e !== null && e !== undefined) n.append(e instanceof Node ? e : String(e));
+  return n;
+}
+const signe = x => (x > 0 ? "+" : "") + Math.round(x);
+const ROLES = {joueur: "joueur", entraineur: "entraîneur", reflexion: "réflexion", journaliste: "journaliste",
+               conference: "conférence", agent: "agent sportif", sponsor: "sponsor"};
+const TOURS = {V: "titre", F: "finale", SF: "demie", QF: "quart", R16: "1er tour"};
+
+let vus = 0, saison = null;
+
+function duree(s) {
+  if (s <= 0) return "—";
+  const m = Math.round(s / 60);
+  return m < 1 ? "< 1 min" : "≈ " + m + " min";
+}
+
+function rendreEntete(e) {
+  const pt = $("point");
+  pt.className = "point" + (e.termine ? " fini" : "");
+  $("statut").textContent = e.termine ? `${e.dossier} : saison terminée` : `${e.dossier} : en cours (mise à jour toutes les 3 s)`;
+  $("encours").textContent = e.termine ? `Saison terminée : ${e.semaines} semaines jouées.`
+    : (e.en_cours ? `En cours : ${e.en_cours}` : `Semaines terminées : ${e.semaines_faites} / ${e.semaines}`);
+  const frac = e.termine ? 1 : (e.semaines_faites + 0.5) / e.semaines;
+  $("progres").style.width = Math.min(100, frac * 100) + "%";
+  const cal = new Map(((e.saison || {}).calendrier || []).map(t => [t.semaine, t]));
+  const sem = $("semaines"); sem.replaceChildren();
+  for (let s = 1; s <= e.semaines; s++) {
+    const t = cal.get(s);
+    const cls = s <= e.semaines_faites ? "fait" : (s === e.semaines_faites + 1 && !e.termine ? "cours" : "");
+    sem.append(el("span", {class: cls, title: t ? `${t.nom} (${t.categorie}, ${t.surface})` : "pas de tournoi"},
+      `S${s}${t ? " · " + t.categorie : ""}`));
+  }
+  $("lien").replaceChildren(e.tableau ? el("a", {href: "/tableau", target: "_blank"}, "tableau de bord complet ↗") : "");
+  const c = $("chiffres"); c.replaceChildren();
+  const blocs = [[e.semaines_faites + " / " + e.semaines, "semaines terminées"], [e.appels, "appels au LLM"],
+                 [e.echecs, "échecs (réessayés)"], [e.duree_moyenne + " s", "par appel"],
+                 [e.termine ? "fini" : duree(e.restant_s), "temps restant estimé"]];
+  if (saison) blocs.push([saison.meta.replis, "décisions en repli"]);
+  for (const [v, l] of blocs) c.append(el("div", {class: "chiffre"}, el("b", {}, v), el("span", {}, l)));
+}
+
+function rendreFlux(e) {
+  const nouveaux = Math.max(0, e.appels - vus);
+  vus = e.appels;
+  const ul = $("flux"); ul.replaceChildren();
+  e.derniers.forEach((a, i) => {
+    const ch = a.champs, ligne = [];
+    if (a.role === "joueur") {
+      ligne.push(el("b", {}, ch.jouer === false ? "ne joue pas" : "joue"), ` · entraînement « ${ch.entrainement ?? "?"} »`);
+    } else if (a.role === "entraineur") {
+      ligne.push(el("b", {}, ch.tactique ?? "?"), ch.recommande_jouer === false ? " · conseille de se reposer" : " · conseille de jouer");
+    } else if (a.role === "agent") {
+      ligne.push(el("b", {}, (ch.montant ?? "?") + " €"), " demandés");
+    } else if (a.role === "sponsor") {
+      ligne.push(el("b", {}, ch.decision ?? "?"), ch.montant ? ` · ${ch.montant} €` : "");
+    }
+    const texte = ch.raisonnement || ch.conseil || ch.lecon || ch.titre || ch.reponse || ch.argument || "";
+    ul.append(el("li", {class: i < nouveaux ? "nouveau" : ""},
+      el("span", {class: "r-" + a.role}, el("b", {}, ROLES[a.role] || a.role)), " ",
+      el("span", {class: "doux"}, a.duree + " s"), " ",
+      a.ok ? "" : el("span", {class: "puce err"}, "échec : " + a.erreur),
+      ligne.length ? el("div", {}, ...ligne) : null,
+      texte ? el("p", {}, "« " + texte + " »") : null));
+  });
+  if (!e.derniers.length) ul.append(el("li", {}, el("span", {class: "doux"}, "En attente du premier appel…")));
+}
+
+function rendreSaison(s) {
+  const J = new Map(s.joueurs.map(j => [j.id, j]));
+  const tb = $("classement"); tb.replaceChildren();
+  [...s.joueurs].sort((a, b) => b.points - a.points).forEach((j, i) => {
+    const d = j.points - j.points_depart;
+    tb.append(el("tr", {},
+      el("td", {class: "n"}, i + 1), el("td", {}, j.nom, " ", el("span", {class: "doux"}, j.pays)),
+      el("td", {}, el("span", {class: "puce" + (j.pilote === "llm" ? " llm" : "")}, j.pilote === "llm" ? "LLM" : "règle")),
+      el("td", {class: "n"}, j.points), el("td", {class: "n " + (d > 0 ? "pos" : d < 0 ? "neg" : "")}, signe(d)),
+      el("td", {class: "n"}, j.titres), el("td", {class: "n"}, `${j.victoires}-${j.matchs - j.victoires}`)));
+  });
+
+  const duels = $("duels"); duels.replaceChildren();
+  const paires = s.experience.paires;
+  const max = Math.max(200, ...paires.map(p => Math.abs(p.ecart)));
+  for (const p of paires) {
+    const l = J.get(p.llm), b = J.get(p.baseline), w = Math.abs(p.ecart) / max * 50;
+    const barre = el("i", {style: `left:${p.ecart >= 0 ? 50 : 50 - w}%;width:${w}%;background:var(${p.ecart >= 0 ? "--accent" : "--alerte"})`});
+    duels.append(el("div", {class: "duel"},
+      el("div", {class: "g"}, b.nom.split(" ").pop() + " ", el("span", {class: "doux"}, signe(p.points_baseline))),
+      el("div", {class: "axe", title: `écart ${signe(p.ecart)} points`}, barre),
+      el("div", {}, el("span", {class: "puce llm"}, "LLM"), " " + l.nom.split(" ").pop() + " ", el("span", {class: "doux"}, signe(p.points_llm)))));
+  }
+  $("bilan").textContent = `Écart moyen LLM − règle : ${signe(s.experience.ecart_moyen)} points par paire `
+    + `(écart-type ${Math.round(s.experience.ecart_type)}). Repère : le hasard seul donne un écart-type d'environ 330 points sur une saison entière.`;
+
+  const derniere = s.semaines[s.semaines.length - 1];
+  $("num-sem").textContent = derniere ? derniere.semaine + (derniere.tournoi ? ` (${derniere.tournoi})` : "") : "—";
+  const dec = $("decisions"); dec.replaceChildren();
+  for (const d of (derniere ? derniere.decisions : []).filter(d => d.pilote === "llm")) {
+    const j = J.get(d.joueur), c = d.conseil;
+    dec.append(el("tr", {},
+      el("td", {}, j.nom, el("div", {class: "doux"}, `fatigue ${d.fatigue}/10${d.blessure ? " · blessé" : ""}`)),
+      el("td", {}, d.jouer ? (d.tour ? TOURS[d.tour] || d.tour : "joue") : el("span", {class: "neg"}, "forfait"),
+        el("div", {class: "doux"}, `entr. ${d.entrainement}${d.tactique ? " · " + d.tactique : ""}`),
+        d.repli ? el("span", {class: "puce err"}, "repli") : null),
+      el("td", {}, d.raisonnement ? "« " + d.raisonnement + " »" : "",
+        c && c.conseil ? el("div", {class: "doux"}, `${c.entraineur} : « ${c.conseil} »`) : null)));
+  }
+
+  const art = $("articles");
+  if (s.articles.length) {
+    art.replaceChildren();
+    for (const a of [...s.articles].reverse()) {
+      art.append(el("div", {class: "article"}, el("div", {class: "doux"}, `Semaine ${a.semaine} · ${a.tournoi} (${a.categorie})`),
+        el("h3", {}, a.titre || "(sans titre)"), el("p", {}, a.article || "")));
+    }
+  }
+}
+
+async function rafraichir() {
+  try {
+    const r = await fetch("/etat", {cache: "no-store"});
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const e = await r.json();
+    saison = e.saison;
+    rendreEntete(e);
+    rendreFlux(e);
+    if (saison) rendreSaison(saison);
+    if (e.termine) return;              // plus rien ne bouge : on arrête d'interroger
+  } catch (err) {
+    $("point").className = "point perdu";
+    $("statut").textContent = "serveur injoignable (relancer python -m tennis.direct)";
+  }
+  setTimeout(rafraichir, 3000);
+}
+
+$("theme").addEventListener("click", () => {
+  const sombre = document.documentElement.dataset.theme
+    ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.dataset.theme = sombre ? "light" : "dark";
+});
+rafraichir();
+</script>
+</body>
+</html>

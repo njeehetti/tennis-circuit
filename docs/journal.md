@@ -122,3 +122,19 @@ Ce que disent les 182 appels (semaines 1 à 8, prompts v1) :
    un bon morceau de README (« itérer sur un prompt et mesurer l'effet »).
 5. Décisions qui te reviennent : nom du dépôt, licence du code, publication
    GitHub, circuit WTA ou mixte.
+
+## Suivi en direct (demandé par Njee le 2026-11-02)
+
+Consigne : « construis oui stp, le but est quand même de visualiser ce
+qu'on fait ». `python -m tennis.direct` sert une page locale qui lit les
+fichiers déjà écrits par la simulation (aucun changement de la boucle de
+saison, donc utilisable sur la saison qui tournait à ce moment-là).
+
+- [choix Claude] Serveur `http.server` de la bibliothèque standard,
+  `127.0.0.1` seulement, page qui interroge `/etat` toutes les 3 s : rien à
+  installer, et un arrêt du serveur n'a aucun effet sur la saison.
+- [choix Claude] Le flux « le LLM pense » montre le rôle et la réponse,
+  pas encore **quel joueur** : `llm.jsonl` ne garde que la fin du prompt.
+  Piste : ajouter le joueur concerné dans le journal LLM pour les saisons
+  suivantes.
+- Temps restant estimé avec ≈ 23 appels par semaine (mesuré en v1).

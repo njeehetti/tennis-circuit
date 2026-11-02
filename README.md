@@ -90,6 +90,23 @@ externe), avec l'évolution du classement, l'expérience par paire, le
 classement final, le rejeu point par point des finales, les décisions et
 le raisonnement de chaque joueur, les articles et les négociations.
 
+### Suivre une saison en direct
+
+Pendant qu'une saison tourne, dans un second terminal :
+
+```bash
+.venv\Scripts\python -m tennis.direct            # la saison la plus récente
+.venv\Scripts\python -m tennis.direct --nom saison_v2_g1
+```
+
+puis ouvrir <http://127.0.0.1:8765>. La page se met à jour toutes les
+3 secondes : semaine en cours et temps restant estimé, chaque décision du
+LLM à l'instant où il répond (joueur, entraîneur, réflexion, presse,
+négociation), classement provisoire, duels de jumeaux LLM / règle fixe,
+décisions et raisonnements de la dernière semaine, articles. Le serveur ne
+fait que **lire** `llm.jsonl` et `saison.json` : on peut l'arrêter et le
+relancer sans gêner la simulation. Il n'écoute que sur `127.0.0.1`.
+
 ## Robustesse face au LLM
 
 Leçons tirées d'un portage de *Generative Agents* sur petits modèles
@@ -111,6 +128,7 @@ tennis/
   llm.py        client Ollama et faux LLM de test
   run.py        point d'entrée
   dashboard.py  tableau de bord HTML
+  direct.py     suivi en direct (serveur local + direct.html)
 outils/         expérience multi-graines, téléchargement des données
 docs/           document de conception et journal des choix
 tests/          pytest (faux LLM : aucun appel réseau)
