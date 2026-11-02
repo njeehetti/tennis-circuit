@@ -175,3 +175,23 @@ tous les agents sur un moment précis de la saison ».
   Okonkwo est à 9/10 de fatigue dès la semaine 4. Le LLM sur-joue.
 - Entraîneurs : `pression_retour` 51, `service_agressif` 21 ; toujours
   aucun désaccord avec le joueur.
+
+### Refonte visuelle : le village du circuit (demande de Njee)
+
+Consigne : « c'est un affichage assez vieillot […] utilise les skills de
+design […] on aurait pu imaginer genre un village tennis avec les courts
+d'entraînement, les stades de compétition, la salle de sport, espace
+détente, salle de presse etc ». Skill utilisé : frontend-design.
+
+- [choix Claude] Direction : plan illustré vu du ciel façon jeu de gestion
+  de club ; bâtiments en coupe pour voir qui est dedans. Palette tirée du
+  tennis : pelouse tondue, allées en sable, courts à la couleur de la vraie
+  surface du tournoi, vert de tableau d'affichage (#0E3B2C) et jaune balle
+  (#D9F24A). Typo Barlow Condensed (signalétique de stade) + Barlow.
+- Bandeau en tableau d'affichage (grand numéro de semaine, tournoi,
+  surface) et frise des 12 semaines cliquable à la place du curseur.
+- Personnages : raquette, bandeau, maillot de la paire, badge « IA »
+  jaune pour le LLM, entraîneur en survêtement avec porte-bloc ; fiche en
+  badge d'accréditation (statistiques en chiffres de tableau d'affichage).
+- Une seule animation : la balle qui traverse le court central entre les
+  finalistes (coupée si « réduire les animations » est activé).

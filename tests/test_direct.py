@@ -58,7 +58,7 @@ def test_serveur_sert_page_et_etat_d_une_vraie_saison(tmp_path):
     base = f"http://127.0.0.1:{serveur.server_address[1]}"
     try:
         page = urllib.request.urlopen(base + "/").read().decode("utf-8")
-        assert "Circuit en direct" in page and "textContent" in page
+        assert "Village du circuit" in page and "textContent" in page
         e = json.loads(urllib.request.urlopen(base + "/etat").read())
         assert e["termine"] and len(e["saison"]["joueurs"]) == 16
         try:

@@ -3,15 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Circuit en direct</title>
+<title>Village du circuit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--fond:#f6f5f1;--carte:#fff;--texte:#1d1f22;--doux:#5d636b;--ligne:#e2e0d9;--accent:#1f6f50;--accent2:#2d5f9a;--alerte:#b4442f;--puce:#eef0ea}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--fond:#141617;--carte:#1d2022;--texte:#e8e6e1;--doux:#a1a7ad;--ligne:#30353a;--accent:#5cc395;--accent2:#7fb0ea;--alerte:#e98b74;--puce:#262a2d}}
 :root[data-theme="dark"]{--fond:#141617;--carte:#1d2022;--texte:#e8e6e1;--doux:#a1a7ad;--ligne:#30353a;--accent:#5cc395;--accent2:#7fb0ea;--alerte:#e98b74;--puce:#262a2d}
 *{box-sizing:border-box}
-body{margin:0;background:var(--fond);color:var(--texte);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+body{margin:0;background:var(--fond);color:var(--texte);font:15px/1.55 "Barlow",system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:1200px;margin:0 auto;padding:20px 16px 64px}
-h1{font-size:24px;margin:0}h2{font-size:17px;margin:0 0 10px}
+h1{margin:0}h2{margin:0 0 10px}
 .tete{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
 .etat{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--doux)}
 .point{width:10px;height:10px;border-radius:50%;background:var(--accent);animation:pulse 1.6s infinite}
@@ -47,77 +50,114 @@ th{color:var(--doux);font-weight:600}td.n,th.n{text-align:right;font-variant-num
 .duel .axe::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--doux)}
 .article h3{margin:0 0 4px;font-size:15px}.article p{margin:0 0 10px;font-size:14px}
 a{color:var(--accent2)}
-#scene-boite{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--ligne)}
+:root{--tableau:#0e3b2c;--tableau-2:#165a43;--balle:#d9f24a;--craie:#f4f7f2;--givre:#b9d6c8}
+h1,h2,h3{font-family:"Barlow Condensed","Barlow",system-ui,sans-serif}
+h1{font-size:32px;font-weight:700;line-height:1.1}h2{font-size:21px;font-weight:600}
+.village{margin:0 0 22px;border-radius:18px;overflow:hidden;background:var(--tableau);box-shadow:0 20px 44px -26px rgba(14,59,44,.8)}
+.affichage{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 24px;align-items:center;padding:16px 20px 14px;color:var(--craie);font-family:"Barlow Condensed","Barlow",sans-serif}
+.aff-semaine{display:flex;align-items:baseline;gap:6px;line-height:1}
+.aff-semaine small{font-size:16px;color:var(--givre)}
+.aff-semaine b{font-size:66px;font-weight:700;color:var(--balle);font-variant-numeric:tabular-nums}
+.aff-semaine em{font-style:normal;font-size:22px;color:var(--givre)}
+.aff-tournoi b{display:block;font-size:30px;font-weight:600;line-height:1.1}
+.aff-tournoi span{font:15px "Barlow",sans-serif;color:var(--givre)}
+.aff-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.aff-actions button{font:600 17px "Barlow Condensed",sans-serif;padding:7px 18px;border-radius:999px;border:2px solid var(--balle);background:transparent;color:var(--balle);cursor:pointer}
+.aff-actions button:hover{background:rgba(217,242,74,.14)}
+#pause.actif{background:var(--balle);color:var(--tableau)}
+#retard{flex-basis:100%;text-align:right;font:14px "Barlow",sans-serif;color:var(--givre)}
+.frise{grid-column:1/-1;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;margin-top:4px}
+.case{display:flex;flex-direction:column;align-items:center;padding:6px 0 4px;border:0;border-bottom:4px solid transparent;border-radius:8px;background:rgba(255,255,255,.05);color:#6f9a86;font-family:"Barlow Condensed",sans-serif;cursor:pointer;position:relative}
+.case b{font-size:19px;line-height:1.05}.case span{font-size:13px}
+.case.jouee{color:var(--craie);background:rgba(255,255,255,.1)}
+.case.jouee:hover{background:rgba(255,255,255,.18)}
+.case.s-Hard.jouee{border-bottom-color:#5b9be0}.case.s-Clay.jouee{border-bottom-color:#e2804f}.case.s-Grass.jouee{border-bottom-color:#84c766}
+.case.vue,.case.vue:hover{background:var(--balle);color:var(--tableau)}
+.case:disabled{cursor:default;opacity:.5}
+.case.encours::after{content:"";position:absolute;top:5px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--balle);animation:pulse 1.6s infinite}
+.case:focus-visible,.aff-actions button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.visuellement-cache{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#scene-boite{position:relative;background:#83b552}
 #scene{display:block;width:100%;height:auto;user-select:none}
-#scene .sol{fill:#cfd8c4}#scene .salle{fill:#f4f1ea;stroke:#c9c3b6}
-#scene .salle-infirmerie{fill:#f6e9e7}#scene .salle-presse{fill:#ece9f4}#scene .salle-sponsors{fill:#f3eddc}
-#scene .salle-repos{fill:#e7f0ee}#scene .salle-vestiaires{fill:#e9edf3}
-#scene .court{stroke:#2b4a2b;stroke-width:2}#scene .lignes{fill:none;stroke:#fff;stroke-width:2;opacity:.85}
-#scene .filet{stroke:#f4f4f4;stroke-width:3;stroke-dasharray:3 2}
-#scene .titre-zone{font:600 12px system-ui,sans-serif;fill:#3b3f45}
-#scene .titre-court{fill:#fff}
-#scene .perso{cursor:pointer;transition:transform 1.4s ease-in-out;outline:none}
-#scene .perso:hover .buste,#scene .perso:focus .buste{stroke:#111;stroke-width:2}
-#scene .perso.decide .buste{stroke:#1f9d61;stroke-width:3}
-#scene .perso.parle .tete{animation:parle .5s infinite alternate}
-@keyframes parle{to{transform:translateY(-3px)}}
-#scene .ombre{fill:rgba(0,0,0,.18)}#scene .jambe{stroke:#2f3338;stroke-width:3;stroke-linecap:round}
-#scene .tete{stroke:rgba(0,0,0,.25)}#scene .casquette{fill:#1d2a3a;stroke:#1d2a3a;stroke-width:2}
-#scene .tige{stroke:#2f3338;stroke-width:1.5}#scene .antenne{fill:#38e09a;stroke:#13784f;animation:antenne 1.8s infinite}
-@keyframes antenne{50%{fill:#b8ffe0}}
-#scene .croix{fill:#d62828}#scene .jauge-fond{fill:rgba(0,0,0,.18)}
-#scene .nom{font:600 10px system-ui,sans-serif;fill:#22262b;text-anchor:middle;paint-order:stroke;stroke:rgba(255,255,255,.75);stroke-width:3px}
-#scene .trophee{font-size:15px}
-#bulle{position:absolute;max-width:280px;background:#fffef6;color:#1d1f22;border:1px solid #d8d2bd;border-radius:12px;padding:6px 10px;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.18);pointer-events:none;transition:left .6s,top .6s}
-#bulle::after{content:"";position:absolute;left:18px;bottom:-8px;border:8px solid transparent;border-bottom:0;border-top-color:#fffef6}
+#scene .panneau-fond{fill:var(--tableau);stroke:rgba(255,255,255,.3);stroke-width:1.5}
+#scene .panneau-titre{font:600 18px "Barlow Condensed",sans-serif;fill:#fff}
+#scene .panneau-role{font:500 16px "Barlow Condensed",sans-serif;fill:var(--balle)}
+#scene .perso{cursor:pointer;transition:transform 1.4s cubic-bezier(.5,0,.3,1);outline:none}
+#scene .perso:focus-visible .maillot,#scene .perso:hover .maillot{stroke:#fff;stroke-width:3}
+#scene .perso.decide .maillot{stroke:var(--balle);stroke-width:3.5}
+#scene .etiquette rect{fill:rgba(14,59,44,.9)}
+#scene .etiquette text{font:600 13px "Barlow Condensed",sans-serif;fill:#fff;text-anchor:middle}
+#scene .perso:hover .etiquette rect,#scene .perso:focus-visible .etiquette rect{fill:var(--balle)}
+#scene .perso:hover .etiquette text,#scene .perso:focus-visible .etiquette text{fill:var(--tableau)}
+#scene .badge-ia rect,#scene .badge-ia path{fill:var(--balle);stroke:var(--tableau);stroke-width:1.5}
+#scene .badge-ia text{font:700 12px "Barlow Condensed",sans-serif;fill:var(--tableau);text-anchor:middle}
+#scene .perso.parle .badge-ia{animation:sautille .45s infinite alternate}
+@keyframes sautille{from{transform:translate(0,-84px)}to{transform:translate(0,-93px)}}
+#bulle{position:absolute;max-width:300px;background:#fff;color:#14231c;border:2px solid var(--tableau);border-radius:16px;padding:8px 12px;font-size:14px;line-height:1.4;box-shadow:0 12px 26px -12px rgba(0,0,0,.45);pointer-events:none;transition:left .6s,top .6s;z-index:4}
+#bulle b{display:block;font:600 16px "Barlow Condensed",sans-serif;color:var(--tableau-2)}
+#bulle::after{content:"";position:absolute;left:20px;bottom:-11px;border:10px solid transparent;border-bottom:0;border-top-color:var(--tableau)}
 #bulle.libre::after{display:none}
-#fiche{position:absolute;width:320px;max-width:calc(100% - 8px);max-height:92%;overflow-y:auto;background:var(--carte);color:var(--texte);border:1px solid var(--ligne);border-radius:12px;padding:12px 14px;font-size:13px;box-shadow:0 8px 28px rgba(0,0,0,.25);z-index:5}
-#fiche h3{margin:0 22px 4px 0;font-size:16px}#fiche p{margin:6px 0}
-#fiche .kv{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--ligne);padding:3px 0}
-#fiche .kv span{color:var(--doux)}#fiche .kv b{text-align:right;font-weight:600}
-#fiche .fermer{position:absolute;right:8px;top:6px;border:0;background:none;font-size:18px;padding:0 6px}
-.commandes{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 10px}
-.commandes input[type=range]{flex:1;min-width:160px}
-#pause.actif{background:var(--alerte);color:#fff;border-color:var(--alerte)}
-.legende{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px}
+#fiche{position:absolute;width:340px;max-width:calc(100% - 12px);max-height:calc(100% - 12px);overflow-y:auto;background:#fffdf7;color:#14231c;border-radius:16px;border-top:12px solid var(--couleur,#0e3b2c);padding:0 16px 14px;font-size:14px;box-shadow:0 24px 54px -18px rgba(0,0,0,.6);z-index:5}
+#fiche .fiche-tete{display:flex;justify-content:space-between;align-items:center;margin:10px 30px 2px 0;font-family:"Barlow Condensed",sans-serif}
+#fiche .pays{font-size:16px;font-weight:700;color:#5d6b64}
+#fiche .pilote{font-size:14px;font-weight:600;padding:1px 10px;border-radius:999px;background:#e8ece9;color:#46524c}
+#fiche .pilote.ia{background:var(--balle);color:var(--tableau)}
+#fiche h3{font-size:30px;font-weight:700;margin:0;line-height:1.05}
+#fiche .perso-txt{margin:4px 0 10px;color:#56635c;font-size:13.5px}
+#fiche .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(68px,1fr));gap:6px;margin:0 0 10px}
+#fiche .stat{background:var(--tableau);border-radius:10px;padding:6px 6px 5px;text-align:center}
+#fiche .stat b{display:block;font:700 23px/1.1 "Barlow Condensed",sans-serif;color:var(--balle);font-variant-numeric:tabular-nums}
+#fiche .stat span{font-size:11.5px;color:var(--givre)}
+#fiche .fatigue{margin:0 0 8px;font-size:13px;color:#56635c;background:linear-gradient(#e3e8e5,#e3e8e5) left bottom/100% 7px no-repeat;padding-bottom:0}
+#fiche .fatigue i{display:block;height:7px;border-radius:4px;margin-top:3px}
+#fiche .kv{display:flex;justify-content:space-between;gap:12px;border-top:1px solid #e6e9e4;padding:5px 0;font-size:13.5px}
+#fiche .kv span{color:#6a766f}#fiche .kv b{text-align:right;font-weight:600}
+#fiche blockquote{margin:8px 0 0;padding:8px 10px;background:#eef3ec;border-radius:10px;font-size:13.5px;line-height:1.45}
+#fiche blockquote span{display:block;font:600 14px "Barlow Condensed",sans-serif;color:var(--tableau-2)}
+#fiche .fermer{position:absolute;right:6px;top:8px;border:0;background:none;font-size:24px;line-height:1;color:#56635c;padding:2px 8px;cursor:pointer}
+#scene-info{margin:0;padding:10px 20px 0;color:var(--balle);font-size:14px}
+#scene-info:empty{display:none}
+.legende-village{display:flex;flex-wrap:wrap;gap:6px 22px;padding:10px 20px 14px;color:var(--givre);font-size:13.5px}
 button{font:inherit;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid var(--ligne);background:var(--carte);color:var(--texte);cursor:pointer}
+@media (max-width:760px){.affichage{grid-template-columns:auto minmax(0,1fr)}.aff-actions{grid-column:1/-1;justify-content:flex-start}#retard{text-align:left}
+  .frise{grid-template-columns:repeat(6,minmax(0,1fr))}.aff-semaine b{font-size:50px}.aff-tournoi b{font-size:24px}}
+@media (prefers-reduced-motion: reduce){#scene .perso{transition:none}.case.encours::after,#scene .perso.parle .badge-ia{animation:none}}
 </style>
+
 </head>
 <body>
 <main>
-  <div class="tete">
+  <header class="tete">
     <div>
-      <h1>Circuit fictif : saison en direct</h1>
+      <h1>Le village du circuit</h1>
       <div class="etat"><span class="point" id="point"></span><span id="statut">connexion…</span></div>
     </div>
-    <div><span id="lien"></span> <button id="theme" type="button">thème</button></div>
-  </div>
+    <div><span id="lien"></span> <button id="theme" type="button">Thème</button></div>
+  </header>
 
-  <div class="carte">
-    <div class="doux" id="encours">—</div>
-    <div class="barre"><i id="progres" style="width:0"></i></div>
-    <div class="semaines" id="semaines"></div>
-  </div>
-
-  <div class="carte">
-    <h2>Le complexe</h2>
-    <div class="commandes">
-      <button id="pause" type="button" aria-pressed="false">⏸ Pause</button>
-      <label for="curseur" class="doux">Semaine</label>
-      <input id="curseur" type="range" min="0" max="0" value="0" step="1">
-      <b id="curseur-txt">—</b>
-      <button id="direct-btn" type="button" hidden>▶ Revenir au direct</button>
-      <span class="doux" id="retard"></span>
+  <section class="village" aria-label="Village du circuit">
+    <div class="affichage">
+      <div class="aff-semaine"><small>Semaine</small><b id="curseur-txt">–</b><em id="aff-total"></em></div>
+      <div class="aff-tournoi"><b id="aff-tournoi">Connexion…</b><span id="aff-detail"></span></div>
+      <div class="aff-actions">
+        <button id="pause" type="button" aria-pressed="false">⏸ Pause</button>
+        <button id="direct-btn" type="button" hidden>Revenir au direct</button>
+        <span id="retard"></span>
+      </div>
+      <div class="frise" id="frise" role="group" aria-label="Choisir la semaine affichée"></div>
+      <label class="visuellement-cache" for="curseur">Semaine affichée</label>
+      <input id="curseur" class="visuellement-cache" type="range" min="0" max="0" value="0" step="1">
     </div>
     <div id="scene-boite">
-      <svg id="scene" viewBox="0 0 1200 660" role="img" aria-label="Plan du complexe de tennis, un personnage par agent"></svg>
+      <svg id="scene" viewBox="0 0 1600 1140" role="img" aria-label="Plan du village : stades, courts d'entraînement, salle de sport, espace détente, presse et sponsors, avec un personnage par agent"></svg>
       <div id="bulle" hidden></div>
       <div id="fiche" hidden></div>
     </div>
-    <p class="doux" id="scene-info" style="margin:8px 0 0"></p>
-    <div class="legende doux"><span>antenne verte = piloté par le LLM (sinon règle fixe)</span><span>même maillot = jumeaux statistiques</span>
-      <span>petit personnage à casquette = entraîneur</span><span>jauge sous les pieds = fatigue</span><span>croix rouge = blessé</span></div>
-  </div>
+    <p id="scene-info"></p>
+    <div class="legende-village"><span>Badge jaune IA : joueur piloté par le LLM</span><span>Même maillot : jumeaux statistiques</span><span>Casquette verte : entraîneur</span><span>Jauge sous le nom : fatigue</span><span>Clique sur un personnage pour ouvrir sa fiche</span></div>
+  </section>
+
+  <div hidden><div id="encours"></div><div class="barre"><i id="progres"></i></div><div id="semaines"></div></div>
 
   <div class="grille" id="chiffres"></div>
 
